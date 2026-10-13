@@ -1,0 +1,25 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #2b2d42; background: linear-gradient(180deg, #fff4e6 0%, #e6f0ff 100%); min-height: 100vh; padding: 16px; }
+main { max-width: 480px; margin: 0 auto; text-align: center; }
+h1 { font-size: 26px; margin: 12px 0; }
+h2 { font-size: 18px; margin: 22px 0 8px; }
+.gatto { font-size: 110px; line-height: 1; margin: 8px 0; }
+.fumetto { background: #fff; border-radius: 16px; padding: 12px 16px; margin: 0 auto 14px; max-width: 360px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); font-size: 16px; }
+.carattere { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+.car { border: 1px solid #b8c4d6; background: #fff; color: #2b2d42; border-radius: 999px; padding: 8px 14px; font: inherit; }
+.car.attivo { background: #3d5a80; color: #fff; border-color: #3d5a80; }
+form { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+input { font: inherit; padding: 12px; border-radius: 10px; border: 1px solid #b8c4d6; width: 100%; max-width: 360px; }
+button#btn-giudica { font: inherit; border: 0; border-radius: 999px; padding: 12px 22px; background: #3d5a80; color: #fff; }
+button#btn-giudica:disabled { background: #8a9bad; }
+.contatore { color: #5a5f7a; font-size: 14px; }
+.esito { margin: 12px auto; background: #fff; border-radius: 16px; padding: 14px; max-width: 360px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.esito[hidden] { display: none; }
+.pollice { font-size: 56px; display: block; }
+.lista { list-style: none; padding: 0; margin: 0; text-align: left; }
+.lista li { background: #fff; border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; }
+/* Decisioni di oggi: si possono rimandare con un tocco */
+.lista li.rimandabile { cursor: pointer; }
+.lista li.rimandabile:active { background: #e6f0ff; }
+/* Il gatto: un'immagine per ogni carattere */
+.gatto-img { width: 170px; height: auto; display: block; margin: 0 auto 6px; }

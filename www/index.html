@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Il gatto giudice</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <h1 id="titolo">Il gatto giudice</h1>
+
+    <img class="gatto-img" id="gatto" alt="Il gatto" src="img/gatto-dolce.png">
+    <div class="fumetto" id="fumetto">Scrivi una decisione di oggi e vediamo cosa ne penso.</div>
+
+    <div class="carattere">
+      <button type="button" class="car" data-carattere="dolce">Dolce</button>
+      <button type="button" class="car" data-carattere="severo">Severo</button>
+      <button type="button" class="car" data-carattere="ironico">Ironico</button>
+    </div>
+
+    <form id="form-decisione">
+      <input id="decisione" type="text" maxlength="120" placeholder="Es. Ho deciso di andare in palestra" required>
+      <button type="submit" id="btn-giudica">Consegna al gatto</button>
+    </form>
+
+    <p class="contatore" id="contatore"></p>
+    <div class="esito" id="esito" hidden>
+      <span class="pollice" id="pollice"></span>
+      <p id="esito-frase"></p>
+    </div>
+
+    <h2>Le decisioni di oggi</h2>
+    <ul class="lista" id="lista-oggi"></ul>
+
+    <h2>Ultimi 7 giorni</h2>
+    <p id="riepilogo"></p>
+  </main>
+  <script src="frasi.js"></script>
+  <script src="lib.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
