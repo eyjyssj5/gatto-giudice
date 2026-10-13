@@ -1,0 +1,19 @@
+# Compila l'app iOS su un Mac in cloud. Questo passaggio non richiede account Apple:
+# controlla solo che il progetto compili. La firma e il caricamento si configurano dopo.
+workflows:
+  ios-compila:
+    name: Gatto giudice iOS - verifica compilazione
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    scripts:
+      - name: Installa dipendenze
+        script: |
+          npm install
+      - name: Crea il progetto iOS
+        script: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compila il progetto
+        script: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
