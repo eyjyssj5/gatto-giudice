@@ -1,0 +1,14 @@
+name = "gatto-giudice-ai"
+main = "worker/index.mjs"
+compatibility_date = "2026-10-15"
+
+[ai]
+binding = "AI"
+
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "38126"
+
+[ratelimits.simple]
+limit = 8
+period = 60
