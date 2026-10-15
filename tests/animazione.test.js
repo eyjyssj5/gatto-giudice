@@ -9,15 +9,18 @@ const html = fs.readFileSync(path.join(__dirname,"../www/index.html"),"utf8");
 const app = fs.readFileSync(path.join(__dirname,"../www/app.js"),"utf8");
 const css = fs.readFileSync(path.join(__dirname,"../www/styles.css"),"utf8");
 
-test("il sito mostra le tre fotografie reali da un unico file AVIF",()=>{
+test("il sito usa esattamente le tre fotografie distinte",()=>{
   const photo = fs.readFileSync(path.join(__dirname,"../www/img/gatti-esatti-2026.avif"));
   assert.ok(photo.length>10000);
   assert.equal(photo.toString("ascii",4,12),"ftypavif");
-  assert.match(css,/gatti-esatti-2026\.avif/);
-  assert.match(css,/background-size: 300% 100%/);
-  assert.match(css,/data-carattere="severo"/);
-  assert.match(css,/data-carattere="ironico"/);
-  assert.match(html,/data-carattere="dolce"/);
+  assert.match(html,/gatto-dolce-esatto\.webp/);
+  assert.match(app,/gatto-" \+ stato\.carattere \+ "-esatto\.webp"/);
+  for(const nome of ["dolce","severo","ironico"]) {
+    const img=fs.readFileSync(path.join(__dirname,"../www/img/gatto-"+nome+"-esatto.webp"));
+    assert.ok(img.length > 20000, nome);
+    assert.equal(img.toString("ascii",0,4),"RIFF");
+    assert.equal(img.toString("ascii",8,12),"WEBP");
+  }
   assert.doesNotMatch(src,/rig-svg|createElement\("svg"\)/);
   assert.match(app,/GattoAnimato\.aggiorna\(stato\.carattere\)/);
 });
