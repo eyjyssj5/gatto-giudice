@@ -21,14 +21,38 @@ button#btn-giudica:disabled { background: #8a9bad; }
 /* Decisioni di oggi: si possono rimandare con un tocco */
 .lista li.rimandabile { cursor: pointer; }
 .lista li.rimandabile:active { background: #e6f0ff; }
-/* Il gatto: un'immagine per ogni carattere */
-.gatto-img { width: 170px; height: auto; display: block; margin: 0 auto 6px; }
+/* Il personaggio respira lentamente. Il muso, non il corpo, articola la voce. */
+.gatto-figura {
+  width: 170px;
+  max-width: 70vw;
+  position: relative;
+  margin: 0 auto 6px;
+  transform-origin: 50% 85%;
+  animation: gatto-respira 6.4s ease-in-out infinite;
+}
+.gatto-img { width: 100%; height: auto; display: block; }
+.gatto-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
+.gatto-figura.animazione-pronta .gatto-canvas { opacity: 1; }
+.gatto-figura.animazione-pronta .gatto-img { opacity: 0; }
+.gatto-figura.parlante { animation: gatto-annuisce 4.2s ease-in-out infinite; }
+.gatto-figura.pensando { animation: gatto-ascolta 4.8s ease-in-out infinite; }
+@keyframes gatto-respira {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  30% { transform: translateY(-1px) rotate(-0.35deg) scale(1.003); }
+  65% { transform: translateY(0) rotate(0.25deg) scale(.998); }
+}
+@keyframes gatto-annuisce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  35% { transform: translateY(-2px) rotate(-0.7deg); }
+  70% { transform: translateY(0) rotate(0.45deg); }
+}
+@keyframes gatto-ascolta {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50% { transform: rotate(0.8deg) translateY(-1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gatto-figura, .gatto-figura.parlante, .gatto-figura.pensando { animation: none; }
+}
 
-/* Voce del Gatto Giudice e animazione leggera dell'immagine esistente. */
 #btn-voce { font: inherit; border: 1px solid #b8c4d6; background: #fff; color: #2b2d42; border-radius: 999px; padding: 8px 16px; margin: 0 auto 12px; cursor: pointer; }
 #btn-voce[hidden] { display: none; }
-.gatto-img.parlante { animation: gatto-parla .22s ease-in-out infinite alternate; transform-origin: center bottom; }
-.gatto-img.pensando { animation: gatto-pensa 1s ease-in-out infinite alternate; }
-@keyframes gatto-parla { from { transform: translateY(0) rotate(-2deg) scaleY(1); } to { transform: translateY(-4px) rotate(2deg) scaleY(.97); } }
-@keyframes gatto-pensa { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
-@media (prefers-reduced-motion: reduce) { .gatto-img.parlante, .gatto-img.pensando { animation: none; } }
