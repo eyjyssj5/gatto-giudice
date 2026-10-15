@@ -101,13 +101,13 @@
       '</g>',
       // Parte superiore del muso. Bocca e mandibola sono distinte.
       '<path d="M145 196Q155 187 180 197Q205 185 215 196" fill="none" stroke="@DARK@" stroke-width="2" opacity=".4"/>',
-      '<g class="rig-bocca">',
-        '<ellipse class="rig-bocca-interno" cx="180" cy="230" rx="24" ry="21" fill="#3e1720" stroke="#853e41" stroke-width="2" transform="scale(1 .1)" style="transform-box:fill-box;transform-origin:center"/>',
-        '<g class="rig-lingua"><ellipse cx="180" cy="242" rx="11" ry="7" fill="#e78b99"/></g>',
-      '</g>',
       '<g class="rig-mandibola">',
         '<path d="M140 235Q180 262 220 235Q218 273 180 278Q142 273 140 235Z" fill="@CHEST@" stroke="@DARK@" stroke-width="1.5"/>',
         '<path d="M147 234Q180 248 213 234" fill="none" stroke="@DARK@" stroke-width="2"/>',
+      '</g>',
+      '<g class="rig-bocca">',
+        '<ellipse class="rig-bocca-interno" cx="180" cy="230" rx="24" ry="21" fill="#3e1720" stroke="#853e41" stroke-width="2" transform="scale(1 .1)" style="transform-box:fill-box;transform-origin:center"/>',
+        '<g class="rig-lingua"><ellipse cx="180" cy="242" rx="11" ry="7" fill="#e78b99"/></g>',
       '</g>',
       '<g class="rig-muso-superiore">',
         '<ellipse cx="157" cy="208" rx="27" ry="18" fill="@CHEST@"/>',
@@ -141,7 +141,7 @@
       "@NAME@": p.nome, "@FUR@": p.fur, "@LIGHT@": p.light,
       "@DARK@": p.dark, "@CHEST@": p.chest, "@EYE@": p.eye,
       "@INNER@": p.inner, "@BROW@": p.eyebrow, "@STRIPES@": p.stripes,
-      "@BROWS@": brows,
+      "@BROWS@": brows.replaceAll("@BROW@", p.eyebrow),
     };
     let svg = BASE;
     for (const [key, val] of Object.entries(swaps)) svg = svg.split(key).join(val);
@@ -222,10 +222,12 @@
       const palpebre = trova(".rig-palpebre");
       if (palpebre && !preferisceRiduzione()) {
         palpebre.style.opacity = "1";
-        blinkHalf = root.setTimeout(() => { palpebre.style.opacity = ".5"; }, 100);
-        blinkEnd = root.setTimeout(() => { palpebre.style.opacity = "0"; }, 170);
+        blinkHalf = root.setTimeout(() => { palpebre.style.opacity = ".65"; }, 85);
       }
-      programmaBlink();
+      blinkEnd = root.setTimeout(() => {
+        if (palpebre) palpebre.style.opacity = "0";
+        programmaBlink();
+      }, 165);
     }, 3500 + Math.random() * 3800);
   }
   const controller = {
