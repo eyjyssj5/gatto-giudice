@@ -4,7 +4,7 @@
   "private": true,
   "description": "Il gatto giudice: un gatto che approva o boccia le tue decisioni",
   "scripts": {
-    "test": "node --test tests/lib.test.js"
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@capacitor/android": "^6.0.0",
