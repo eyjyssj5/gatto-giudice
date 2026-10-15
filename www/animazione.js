@@ -12,7 +12,11 @@
    parola() {},
    ferma() {figura.classList.remove("parlante");},
    pensa(attivo) {figura.classList.toggle("pensando",Boolean(attivo));},
-   aggiorna() {figura.classList.remove("animazione-pronta");}
+   aggiorna(carattere) {
+     if (["dolce","severo","ironico"].includes(carattere)) {
+       figura.dataset.carattere = carattere;
+     }
+   }
  };
  root.GattoAnimato=controller;
 })(window);
