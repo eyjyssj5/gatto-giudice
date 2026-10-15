@@ -27,10 +27,6 @@ button#btn-giudica:disabled { background: #8a9bad; }
   width: 290px;
   max-width: 90vw;
   aspect-ratio: 380 / 475;
-  background-image: url("img/gatti-esatti-2026.avif");
-  background-repeat: no-repeat;
-  background-size: 300% 100%;
-  background-position: 0% 50%;
   position: relative;
   margin: 0 auto 10px;
   transform-origin: 50% 82%;
@@ -41,10 +37,8 @@ button#btn-giudica:disabled { background: #8a9bad; }
   height: 100%;
   object-fit: contain;
   display: block;
-  opacity: 0;
+  opacity: 1;
 }
-.gatto-figura[data-carattere="severo"] { background-position: 50% 50%; }
-.gatto-figura[data-carattere="ironico"] { background-position: 100% 50%; }
 .gatto-canvas { display: none !important; }
 .gatto-figura.parlante { animation: gatto-parla-naturale 4.3s ease-in-out infinite; }
 .gatto-figura.pensando { animation: gatto-ascolta 5.2s ease-in-out infinite; }
