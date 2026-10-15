@@ -10,7 +10,10 @@
   <main>
     <h1 id="titolo">Il gatto giudice</h1>
 
-    <img class="gatto-img" id="gatto" alt="Il gatto" src="img/gatto-dolce.png">
+    <div id="gatto-figura" class="gatto-figura">
+      <img class="gatto-img" id="gatto" alt="Il gatto" src="img/gatto-dolce.png">
+      <canvas id="gatto-animato" class="gatto-canvas" aria-hidden="true"></canvas>
+    </div>
     <div class="fumetto" id="fumetto" aria-live="polite">Scrivi una decisione di oggi e vediamo cosa ne penso.</div>
 
     <button type="button" id="btn-voce" hidden aria-label="Ascolta la sentenza del gatto">🔊 Ascolta la sentenza</button>
@@ -40,6 +43,7 @@
   </main>
   <script src="frasi.js"></script>
   <script src="lib.js"></script>
+  <script src="animazione.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

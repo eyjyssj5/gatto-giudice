@@ -93,7 +93,9 @@
     document.querySelectorAll(".car").forEach((b) => {
       b.classList.toggle("attivo", b.dataset.carattere === stato.carattere);
     });
-    $("gatto").src = "img/gatto-" + stato.carattere + ".png";
+    const nuovoSrc = "img/gatto-" + stato.carattere + ".png";
+    if ($("gatto").getAttribute("src") !== nuovoSrc) $("gatto").src = nuovoSrc;
+    GattoAnimato.aggiorna();
   }
 
   function aggiornaTutto() {
@@ -109,7 +111,7 @@
   function fermaVoce() {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     voceCorrente = null;
-    $("gatto").classList.remove("parlante");
+    GattoAnimato.ferma();
   }
 
   function pronuncia(frase) {
@@ -120,11 +122,12 @@
     voce.lang = "it-IT";
     voce.rate = 0.93;
     voce.pitch = 0.85;
-    voce.onstart = () => { if (voceCorrente === voce) $("gatto").classList.add("parlante"); };
+    voce.onstart = () => { if (voceCorrente === voce) GattoAnimato.parla(); };
+    voce.onboundary = () => { if (voceCorrente === voce) GattoAnimato.parola(); };
     const termina = () => {
       if (voceCorrente === voce) {
         voceCorrente = null;
-        $("gatto").classList.remove("parlante");
+        GattoAnimato.ferma();
       }
     };
     voce.onend = termina;
@@ -176,7 +179,7 @@
     }
     const dispositivo = dispositivoDi(stato);
     fermaVoce();
-    $("gatto").classList.add("pensando");
+    GattoAnimato.pensa(true);
     $("btn-giudica").disabled = true;
     $("fumetto").textContent = "Il gatto ci pensa...";
     try {
@@ -206,7 +209,7 @@
         ? "Il gatto non risponde. Riprova tra poco."
         : "Qualcosa è andato storto. Riprova.";
     } finally {
-      $("gatto").classList.remove("pensando");
+      GattoAnimato.pensa(false);
       $("btn-giudica").disabled = false;
       aggiornaTutto();
     }
