@@ -21,70 +21,43 @@ button#btn-giudica:disabled { background: #8a9bad; }
 /* Decisioni di oggi: si possono rimandare con un tocco */
 .lista li.rimandabile { cursor: pointer; }
 .lista li.rimandabile:active { background: #e6f0ff; }
-/* Gatti realizzati in SVG a parti mobili: volto, mandibola, occhi, testa e coda. */
+/* Le tre fotografie originali del Gatto Giudice sono conservate.
+   Movimento lento, senza vibrazione rapida o personaggi vettoriali sostitutivi. */
 .gatto-figura {
-  width: 232px;
-  max-width: 78vw;
-  aspect-ratio: 360 / 430;
+  width: 290px;
+  max-width: 90vw;
+  aspect-ratio: 220 / 205;
   position: relative;
-  margin: 0 auto 8px;
-  transform-origin: 50% 85%;
-  animation: gatto-respira 7s ease-in-out infinite;
+  margin: 0 auto 10px;
+  transform-origin: 50% 82%;
+  animation: gatto-respira 6.8s ease-in-out infinite;
 }
 .gatto-img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
+  transform-origin: 50% 80%;
 }
 .gatto-canvas { display: none !important; }
-.gatto-figura.animazione-pronta .gatto-img { opacity: 0; }
-.rig-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
-.rig-testa { transform-box: fill-box; transform-origin: center 75%; animation: rig-testa-respira 6.4s ease-in-out infinite; }
-.rig-tail { transform-box: fill-box; transform-origin: 30% 90%; animation: rig-coda 5.5s ease-in-out infinite; }
-.rig-orecchie { transform-box: fill-box; transform-origin: center 80%; }
-.rig-braccio { transform-box: fill-box; transform-origin: 50% 55%; }
-.rig-palpebre { transition: opacity .065s ease-in-out; }
-.rig-mandibola { transition: transform 40ms ease-out; }
-.gatto-figura.parlante { animation: gatto-annuisce 4.5s ease-in-out infinite; }
-.gatto-figura.parlante .rig-testa { animation: rig-testa-parla 3.3s ease-in-out infinite; }
-.gatto-figura.parlante .rig-braccio { animation: rig-gesticola 3.8s ease-in-out infinite; }
-.gatto-figura.pensando { animation: gatto-ascolta 4.8s ease-in-out infinite; }
+.gatto-figura.parlante { animation: gatto-parla-naturale 4.3s ease-in-out infinite; }
+.gatto-figura.pensando { animation: gatto-ascolta 5.2s ease-in-out infinite; }
 @keyframes gatto-respira {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-1px) scale(1.004); }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  42% { transform: translateY(-1px) rotate(-.4deg); }
+  65% { transform: translateY(0) rotate(.3deg); }
 }
-@keyframes rig-testa-respira {
-  0%, 100% { transform: rotate(0); }
-  45% { transform: rotate(.6deg); }
-}
-@keyframes rig-testa-parla {
-  0%, 100% { transform: rotate(0deg) translateY(0); }
-  37% { transform: rotate(-1.5deg) translateY(1px); }
-  72% { transform: rotate(.85deg) translateY(-1px); }
-}
-@keyframes rig-coda {
-  0%,100% { transform: rotate(0); }
-  50% { transform: rotate(3.2deg); }
-}
-@keyframes gatto-annuisce {
-  0%, 100% { transform: translateY(0); }
-  48% { transform: translateY(-1px); }
+@keyframes gatto-parla-naturale {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30% { transform: translateY(-2px) rotate(-.8deg); }
+  65% { transform: translateY(0) rotate(.55deg); }
 }
 @keyframes gatto-ascolta {
-  0%,100% { transform: translateY(0); }
-  50% { transform: translateY(-1px); }
-}
-@keyframes rig-gesticola {
-  0%, 100% { transform: rotate(0); }
-  50% { transform: rotate(-2deg); }
+  0%,100% { transform: rotate(0deg); }
+  55% { transform: rotate(.8deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .gatto-figura, .gatto-figura.parlante, .gatto-figura.pensando,
-  .rig-testa, .gatto-figura.parlante .rig-testa, .rig-tail,
-  .gatto-figura.parlante .rig-braccio { animation: none; }
+  .gatto-figura, .gatto-figura.parlante, .gatto-figura.pensando {animation: none}
 }
 
 #btn-voce { font: inherit; border: 1px solid #b8c4d6; background: #fff; color: #2b2d42; border-radius: 999px; padding: 8px 16px; margin: 0 auto 12px; cursor: pointer; }
