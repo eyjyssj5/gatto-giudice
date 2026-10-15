@@ -54,18 +54,6 @@
     const altezza = 1.8 + a * 7.0;
     const spostamento = a * 10.0;
 
-    // Ombra soffusa della bocca che si apre: niente deformazione dell'intero gatto.
-    ctx.save();
-    const ombra = ctx.createRadialGradient(x, y + 2, 0.2, x, y + 2, r * 1.15);
-    ombra.addColorStop(0, "rgba(35,15,17,0.92)");
-    ombra.addColorStop(0.6, "rgba(54,27,30,0.85)");
-    ombra.addColorStop(1, "rgba(81,43,36,0.18)");
-    ctx.fillStyle = ombra;
-    ctx.beginPath();
-    ctx.ellipse(x, y + spostamento * 0.13, ampiezza, altezza, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
     // Piccola porzione inferiore del muso che segue l'apertura della mandibola.
     // Il resto dell'immagine non salta e non vibra.
     ctx.save();
@@ -79,6 +67,19 @@
     ctx.clip();
     ctx.drawImage(foto, 0, spostamento, w, h);
     ctx.restore();
+    // Ombra soffusa della bocca che si apre: niente deformazione dell'intero gatto.
+    ctx.save();
+    const ombra = ctx.createRadialGradient(x, y + 2, 0.2, x, y + 2, r * 1.15);
+    ombra.addColorStop(0, "rgba(35,15,17,0.92)");
+    ombra.addColorStop(0.6, "rgba(54,27,30,0.85)");
+    ombra.addColorStop(1, "rgba(81,43,36,0.18)");
+    ctx.fillStyle = ombra;
+    ctx.beginPath();
+    ctx.ellipse(x, y + spostamento * 0.13, ampiezza, altezza, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+
   }
 
   function fotogramma(ora) {
