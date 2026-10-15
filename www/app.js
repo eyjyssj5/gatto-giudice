@@ -5,8 +5,8 @@
 (function () {
   const $ = (id) => document.getElementById(id);
 
-  // Indirizzo del server, da sostituire quando e' pubblicato (es. https://gatto-giudice.onrender.com).
-  const SERVER = "INSERISCI_URL_DEL_SERVER";
+  // Dopo la pubblicazione del Cloudflare Worker, incolla qui il suo indirizzo workers.dev.
+  const SERVER = "INSERISCI_URL_DEL_WORKER";
   const SERVER_ATTIVO = !SERVER.startsWith("INSERISCI");
   const CHIAVE = "gatto.stato";
   const LIMITE = 10;
@@ -104,11 +104,47 @@
     mostraContatore(stato);
   }
 
+  let voceCorrente = null;
+
+  function fermaVoce() {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    voceCorrente = null;
+    $("gatto").classList.remove("parlante");
+  }
+
+  function pronuncia(frase) {
+    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+    fermaVoce();
+    const voce = new SpeechSynthesisUtterance(frase);
+    voceCorrente = voce;
+    voce.lang = "it-IT";
+    voce.rate = 0.93;
+    voce.pitch = 0.85;
+    voce.onstart = () => { if (voceCorrente === voce) $("gatto").classList.add("parlante"); };
+    const termina = () => {
+      if (voceCorrente === voce) {
+        voceCorrente = null;
+        $("gatto").classList.remove("parlante");
+      }
+    };
+    voce.onend = termina;
+    voce.onerror = termina;
+    window.speechSynthesis.speak(voce);
+  }
+
+  $("btn-voce").addEventListener("click", () => {
+    const frase = $("esito-frase").textContent;
+    if (frase) pronuncia(frase);
+  });
+
   function mostraEsito(approva, frase, testo) {
     $("fumetto").textContent = frase;
     $("pollice").textContent = approva ? "👍" : "👎";
     $("esito-frase").textContent = frase;
     $("esito").hidden = false;
+    $("btn-voce").hidden = !("speechSynthesis" in window);
+    // Riproduzione automatica dove consentita; su iPhone e' disponibile il pulsante Ascolta.
+    pronuncia(frase);
   }
 
   // Restituisce { approva, frase, rimaste } oppure { limite: true }.
@@ -124,7 +160,10 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decisione: testo, carattere: stato.carattere, dispositivo: dispositivo }),
     });
-    if (risposta.status === 429) return { limite: true };
+    if (risposta.status === 429) {
+      const info = await risposta.json().catch(() => ({}));
+      return { pausa: info.errore || "Il gatto sta riposando. Riprova tra un minuto." };
+    }
     if (!risposta.ok) throw new Error("server non disponibile");
     return risposta.json();
   }
@@ -136,6 +175,8 @@
       return;
     }
     const dispositivo = dispositivoDi(stato);
+    fermaVoce();
+    $("gatto").classList.add("pensando");
     $("btn-giudica").disabled = true;
     $("fumetto").textContent = "Il gatto ci pensa...";
     try {
@@ -147,8 +188,15 @@
         scrivi(stato);
         return;
       }
+      if (dati.pausa) {
+        $("fumetto").textContent = dati.pausa;
+        return;
+      }
       stato.decisioni.push({ data: oggi(), testo: testo, approva: dati.approva, frase: dati.frase });
-      stato.rimaste = dati.rimaste;
+      const rimasteDopo = Math.max(0, LIMITE - Gatto.decisioniDi(stato.decisioni, oggi()).length);
+      stato.rimaste = typeof dati.rimaste === "number"
+        ? Math.min(rimasteDopo, Math.max(0, dati.rimaste))
+        : rimasteDopo;
       stato.rimasteData = oggi();
       scrivi(stato);
       mostraEsito(dati.approva, dati.frase, testo);
@@ -158,6 +206,7 @@
         ? "Il gatto non risponde. Riprova tra poco."
         : "Qualcosa è andato storto. Riprova.";
     } finally {
+      $("gatto").classList.remove("pensando");
       $("btn-giudica").disabled = false;
       aggiornaTutto();
     }
