@@ -23,3 +23,12 @@ button#btn-giudica:disabled { background: #8a9bad; }
 .lista li.rimandabile:active { background: #e6f0ff; }
 /* Il gatto: un'immagine per ogni carattere */
 .gatto-img { width: 170px; height: auto; display: block; margin: 0 auto 6px; }
+
+/* Voce del Gatto Giudice e animazione leggera dell'immagine esistente. */
+#btn-voce { font: inherit; border: 1px solid #b8c4d6; background: #fff; color: #2b2d42; border-radius: 999px; padding: 8px 16px; margin: 0 auto 12px; cursor: pointer; }
+#btn-voce[hidden] { display: none; }
+.gatto-img.parlante { animation: gatto-parla .22s ease-in-out infinite alternate; transform-origin: center bottom; }
+.gatto-img.pensando { animation: gatto-pensa 1s ease-in-out infinite alternate; }
+@keyframes gatto-parla { from { transform: translateY(0) rotate(-2deg) scaleY(1); } to { transform: translateY(-4px) rotate(2deg) scaleY(.97); } }
+@keyframes gatto-pensa { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+@media (prefers-reduced-motion: reduce) { .gatto-img.parlante, .gatto-img.pensando { animation: none; } }
