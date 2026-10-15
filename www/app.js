@@ -93,6 +93,8 @@
     document.querySelectorAll(".car").forEach((b) => {
       b.classList.toggle("attivo", b.dataset.carattere === stato.carattere);
     });
+    const fileFoto = "img/gatto-" + stato.carattere + "-esatto.webp";
+    if (!$("gatto").src.endsWith(fileFoto)) $("gatto").src = fileFoto;
     $("gatto").alt = "Gatto Giudice: " + stato.carattere;
     GattoAnimato.aggiorna(stato.carattere);
   }
