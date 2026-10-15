@@ -93,9 +93,8 @@
     document.querySelectorAll(".car").forEach((b) => {
       b.classList.toggle("attivo", b.dataset.carattere === stato.carattere);
     });
-    const nuovoSrc = "img/gatto-" + stato.carattere + "-giudice.svg";
-    if ($("gatto").getAttribute("src") !== nuovoSrc) $("gatto").src = nuovoSrc;
-    GattoAnimato.aggiorna();
+    $("gatto").alt = "Gatto Giudice: " + stato.carattere;
+    GattoAnimato.aggiorna(stato.carattere);
   }
 
   function aggiornaTutto() {

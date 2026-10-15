@@ -1,0 +1,32 @@
+name: Estrai tre gatti fotografici
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'www/img/gatti-esatti-2026.avif'
+      - 'scripts/estrai_foto_gatti.py'
+      - '.github/workflows/estrai-gatti.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  estrai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Installa Pillow per leggere AVIF
+        run: pip install 'pillow>=12,<13'
+      - name: Estrai le tre fotografie, senza rigenerarle
+        run: python scripts/estrai_foto_gatti.py
+      - name: Salva i tre file fotografici nel repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add www/img/gatto-dolce-esatto.webp www/img/gatto-severo-esatto.webp www/img/gatto-ironico-esatto.webp
+          if ! git diff --cached --quiet; then
+            git commit -m "Aggiungi tre fotografie singole del Gatto Giudice"
+            git push origin HEAD:main
+          fi
