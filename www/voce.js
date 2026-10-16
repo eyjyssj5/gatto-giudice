@@ -5,7 +5,7 @@
  */
 (function(root) {
  "use strict";
- const PIPER_MODULE="https://esm.sh/@mintplex-labs/piper-tts-web@1.0.5?bundle";
+ const PIPER_MODULE="./vendor/piper.js";
  // L'originaria URL cdnjs ONNX 1.18 non contiene ort-wasm-simd-threaded.mjs:
  // era il 404 che rendeva Piper completamente muto.
  // Il runtime WebAssembly viene caricato da un pacchetto npm pubblico completo.
