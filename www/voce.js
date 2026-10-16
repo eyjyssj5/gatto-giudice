@@ -30,7 +30,7 @@
    const s=String(code||"it").toLowerCase().slice(0,2);
    return Object.hasOwn(LOCALES,s)?s:"it";
  }
- function chooseVoice(available,language) {
+ function chooseVoice(available,language,character="dolce") {
    const code=LOCALES[normalizeLocale(language)];
    const list=Array.isArray(available)
      ? available.map(v=>typeof v==="string"?v:(v.key||v.id||v.voiceId||""))
@@ -42,16 +42,32 @@
      const score=x=>(/-medium$/i.test(x)?0:/-low$/i.test(x)?1:2);
      return score(a)-score(b) || a.localeCompare(b);
    });
+   // Caratteri differenti usano modelli differenti dove il catalogo li offre.
+   // Dove c'e' un solo modello, la differenza e' nella velocita'/altezza.
+   if(character==="severo") return eligible[Math.min(1,eligible.length-1)];
+   if(character==="ironico") return eligible[eligible.length>2?2:0];
    return eligible[0];
  }
- async function getVoice(language) {
+ async function getVoice(language,character) {
    const locale=normalizeLocale(language);
-   if(voiceByLocale.has(locale))return voiceByLocale.get(locale);
+   const key=locale+"/"+character;
+   if(voiceByLocale.has(key))return voiceByLocale.get(key);
    const tts=await getModule();
-   const chosen=chooseVoice(await tts.voices(),locale);
+   const chosen=chooseVoice(await tts.voices(),locale,character);
    if(!chosen)throw new Error("Nessuna voce Piper disponibile per "+locale);
-   voiceByLocale.set(locale,chosen);
+   voiceByLocale.set(key,chosen);
    return chosen;
+ }
+ function resetSessionIfVoiceChanged(tts, voiceId) {
+   // piper-tts-web@1.0.5 ha una sessione ONNX singleton.
+   // Senza questo reset cambiare lingua pronuncia con il modello precedente.
+   const Session=tts.TtsSession;
+   if(!Session || !("_instance" in Session))return false;
+   if(Session._instance && Session._instance.voiceId!==voiceId) {
+     Session._instance=null;
+     return true;
+   }
+   return false;
  }
  function stop() {
    if(sourceNode) { sourceNode.onended=null;try{sourceNode.stop();}catch(_err){};sourceNode.disconnect();sourceNode=null; }
@@ -73,8 +89,9 @@
    selected={id,onEnd:hooks.onEnd};
    try {
      hooks.onProgress?.("loading");
-     const voiceId=await getVoice(language);
+     const voiceId=await getVoice(language,character);
      const tts=await getModule();
+     resetSessionIfVoiceChanged(tts,voiceId);
      // Il catalogo di modelli e' online, il WAV viene prodotto in locale.
      const wav=await tts.predict({text:String(text).slice(0,240),voiceId});
      if(!selected || selected.id!==id)return false;
@@ -109,7 +126,7 @@
      return false;
    } finally {busy=false;}
  }
- const api={speak,stop,chooseVoice,normalizeLocale,isBusy:()=>busy,LOCALES,PRESETS};
+ const api={speak,stop,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,LOCALES,PRESETS};
  if(typeof module==="object" && module.exports)module.exports=api;
  else root.GattoVoce=api;
 })(typeof window!=="undefined"?window:globalThis);

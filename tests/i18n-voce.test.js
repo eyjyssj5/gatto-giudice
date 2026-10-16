@@ -46,3 +46,24 @@ test("l'app richiama Piper su richiesta e non impone la voce Siri",()=>{
   for(const cat of ["dolce","severo","ironico"])assert.ok(html.includes('data-carattere="'+cat+'"'));
   assert.match(app,/gatto-" \+ stato\.carattere \+ "-esatto\.webp"/);
 });
+
+test("la voce cambia tra Dolce Severo e Ironico quando sono disponibili modelli distinti",()=>{
+  const available=[
+    {key:"it_IT-paola-medium"},
+    {key:"it_IT-riccardo-x_low"},
+    {key:"it_IT-altro-low"}
+  ];
+  const sweet=VOCE.chooseVoice(available,"it","dolce");
+  const strict=VOCE.chooseVoice(available,"it","severo");
+  const ironic=VOCE.chooseVoice(available,"it","ironico");
+  assert.equal(new Set([sweet,strict,ironic]).size,3);
+  assert.equal(VOCE.chooseVoice([{key:"pt_PT-tugão-medium"}],"pt","severo"),"pt_PT-tugão-medium");
+});
+
+test("al cambio della lingua o del gatto la sessione singleton Piper viene ricreata",()=>{
+  const fake={TtsSession:{_instance:{voiceId:"it_IT-paola-medium"}}};
+  assert.equal(VOCE.resetSessionIfVoiceChanged(fake,"it_IT-paola-medium"),false);
+  assert.equal(fake.TtsSession._instance.voiceId,"it_IT-paola-medium");
+  assert.equal(VOCE.resetSessionIfVoiceChanged(fake,"es_ES-davefx-medium"),true);
+  assert.equal(fake.TtsSession._instance,null);
+});
