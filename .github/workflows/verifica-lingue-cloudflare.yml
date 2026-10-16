@@ -1,0 +1,58 @@
+name: Verifica Cloudflare in 12 lingue
+on:
+  push:
+    branches: [main]
+    paths: ["worker/index.mjs", ".github/workflows/verifica-lingue-cloudflare.yml"]
+  workflow_dispatch:
+jobs:
+  check-live-worker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Testa la distribuzione delle lingue sul Worker
+        run: |
+          node --input-type=module <<'NODE'
+          const url = "https://gatto-giudice-ai.eyjyssj.workers.dev/giudica";
+          const languages = ["es","pt","ar","zh"];
+          for(let attempt=1;attempt<=8;attempt++) {
+            try {
+              const res=await fetch(url,{
+                method:"POST",
+                headers:{"Origin":"https://eyjyssj5.github.io","Content-Type":"application/json"},
+                body:JSON.stringify({
+                  decisione:"Voglio imparare una nuova lingua e studiare ogni giorno.",
+                  carattere:"dolce",
+                  dispositivo:"smokemobile-"+languages[0]+"-"+attempt+"-20261016",
+                  lingua:"es"
+                }),
+                signal:AbortSignal.timeout(25000)
+              });
+              const body=await res.json();
+              console.log("Attesa Worker multilingue: HTTP",res.status,body);
+              if(res.ok && body.lingua==="es")break;
+              if(attempt===8)throw new Error("Il nuovo Worker non e' stato distribuito");
+            } catch(e) {
+              console.warn("Tentativo",attempt,e.message);
+              if(attempt===8)throw e;
+            }
+            await new Promise(r=>setTimeout(r,12000));
+          }
+          for (const lang of languages){
+            const response=await fetch(url,{
+              method:"POST",
+              headers:{"Origin":"https://eyjyssj5.github.io","Content-Type":"application/json"},
+              body:JSON.stringify({
+                decisione:"Ho deciso di studiare ogni giorno",
+                carattere:"ironico",
+                dispositivo:"smokemobile-"+lang+"-20261016",
+                lingua:lang
+              }),
+              signal:AbortSignal.timeout(25000)
+            });
+            const body=await response.json();
+            console.log("TEST",lang,"HTTP",response.status,body);
+            if(!response.ok||body.lingua!==lang||typeof body.frase!=="string"||!body.frase){
+              throw new Error("Errore risposta AI nella lingua "+lang);
+            }
+          }
+          console.log("OK: Worker multilingue disponibile sul dominio pubblico");
+          NODE
