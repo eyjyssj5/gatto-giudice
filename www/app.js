@@ -116,7 +116,7 @@
     $("decisione").placeholder=t("placeholder");
     $("btn-giudica").textContent=t("submit");
     $("btn-voce").textContent="🔊 " + t("listen");
-    $("voce-info").textContent=t("voiceInfo");
+    $("voce-info").textContent=GattoVoce.usesSystemVoice() ? t("voiceTemporary") : t("voiceInfo");
     $("titolo-oggi").textContent=t("today");
     $("titolo-settimana").textContent=t("week");
     // Non cancellare il messaggio di attesa o errore durante il refresh della UI.
@@ -176,8 +176,8 @@
     $("esito-frase").textContent = frase;
     $("esito").hidden = false;
     $("btn-voce").hidden = false;
-    $("voce-info").textContent=t("voiceFirstDownload");
-    $("stato-voce").textContent=t("voicePreparing");
+    $("voce-info").textContent=GattoVoce.usesSystemVoice() ? t("voiceTemporary") : t("voiceFirstDownload");
+    $("stato-voce").textContent="";
     // La voce parte con un tocco dedicato: evitiamo download pesanti automatici
     // su iPhone e blocchi dell'interfaccia nel mezzo della sentenza.
   }
