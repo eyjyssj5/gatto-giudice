@@ -5,7 +5,15 @@
  */
 (function(root) {
  "use strict";
- const PIPER_MODULE="https://esm.sh/@mintplex-labs/piper-tts-web@1.0.5?bundle";
+ const PIPER_MODULE="./vendor/piper.js";
+ // L'originaria URL cdnjs ONNX 1.18 non contiene ort-wasm-simd-threaded.mjs:
+ // era il 404 che rendeva Piper completamente muto.
+ // Il runtime WebAssembly viene caricato da un pacchetto npm pubblico completo.
+ const WASM_PATHS=Object.freeze({
+   onnxWasm:"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.1/dist/",
+   piperData:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.data",
+   piperWasm:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm"
+ });
  const LOCALES=Object.freeze({
    it:"it_IT",es:"es_ES",en:"en_US",pt:"pt_PT",fr:"fr_FR",de:"de_DE",
    nl:"nl_NL",pl:"pl_PL",ru:"ru_RU",tr:"tr_TR",ar:"ar_JO",zh:"zh_CN"
@@ -16,15 +24,41 @@
    ironico:{rate:1.07}   // leggermente vivace
  });
  let modulePromise=null;
- let audio=null, activeUrl=null, audioContext=null, sourceNode=null, busy=false, selected=null;
+ let phase="idle";
+ let audio=null, activeUrl=null, audioContext=null, sourceNode=null, busy=false, selected=null, unlocked=false;
  const voiceByLocale=new Map();
 
  async function getModule() {
-   if (!modulePromise) modulePromise=import(PIPER_MODULE).catch(e=>{modulePromise=null;throw e;});
+   if (!modulePromise) {
+     modulePromise=import(PIPER_MODULE).catch(error=>{
+       modulePromise=null;
+       throw Object.assign(new Error("Impossibile caricare il motore vocale. Controlla Internet."),{code:"library",cause:error});
+     });
+   }
    const mod=await modulePromise;
-   if(typeof mod.predict!=="function" || typeof mod.voices!=="function")
-     throw new Error("Libreria vocale Piper non disponibile.");
+   if(typeof mod.TtsSession!=="function" || typeof mod.voices!=="function")
+     throw Object.assign(new Error("La libreria vocale non è compatibile."),{code:"library"});
    return mod;
+ }
+ function prepare() {
+   // La preparazione DEVE avvenire direttamente al tocco del pulsante,
+   // altrimenti Safari iOS puo' impedire la riproduzione al termine della rete.
+   try {
+     const Context=root.AudioContext||root.webkitAudioContext;
+     if(!Context)return false;
+     if(!audioContext)audioContext=new Context();
+     if(audioContext.state==="suspended")audioContext.resume().catch(()=>{});
+     // Riproduci un frame silenzioso durante il gesto per abilitare l'audio futuro.
+     const buffer=audioContext.createBuffer(1,1,22050);
+     const source=audioContext.createBufferSource();
+     source.buffer=buffer;
+     source.connect(audioContext.destination);
+     source.start();
+     unlocked=true;
+     return true;
+   } catch(error) {
+     return false;
+   }
  }
  function normalizeLocale(code) {
    const s=String(code||"it").toLowerCase().slice(0,2);
@@ -77,25 +111,37 @@
    selected=null;
  }
  async function speak(text,language,character,hooks={}) {
-   if(busy)return false;
+   if(busy) return false;
    stop();
    busy=true;
-   // Apriamo il dispositivo audio SUBITO, nel gesto dell'utente:
-   // iOS puo' bloccare un play() avviato dopo un download asincrono.
-   const Context=root.AudioContext||root.webkitAudioContext;
-   if(Context && !audioContext)audioContext=new Context();
-   if(audioContext && audioContext.state==="suspended")audioContext.resume().catch(()=>{});
    const id=Symbol("voce");
    selected={id,onEnd:hooks.onEnd};
+   const report=(value)=>{phase=value;hooks.onProgress?.(value);};
    try {
-     hooks.onProgress?.("loading");
+     if(!unlocked) prepare();
+     report("loading");
      const voiceId=await getVoice(language,character);
+     if(!selected || selected.id!==id)return false;
      const tts=await getModule();
      resetSessionIfVoiceChanged(tts,voiceId);
-     // Il catalogo di modelli e' online, il WAV viene prodotto in locale.
-     const wav=await tts.predict({text:String(text).slice(0,240),voiceId});
+     report("download");
+     // La funzione predict() generale usa un percorso ONNX rotto.
+     // Creando TtsSession direttamente indichiamo un URL WASM valido.
+     const session=new tts.TtsSession({
+       voiceId,
+       wasmPaths:WASM_PATHS,
+       progress:(progress)=>{
+         if(selected?.id===id && progress?.total>0){
+           const percent=Math.min(100,Math.max(0,Math.round(progress.loaded/progress.total*100)));
+           report("download:"+percent);
+         }
+       }
+     });
+     const wav=await session.predict(String(text).trim().slice(0,240));
      if(!selected || selected.id!==id)return false;
-     if(!(wav instanceof Blob))throw new Error("Piper non ha restituito un audio");
+     if(!(wav instanceof Blob) || wav.size<44)
+       throw Object.assign(new Error("La sintesi vocale non ha creato l'audio."),{code:"synthesis"});
+     report("playback");
      if(audioContext) {
        const bytes=await wav.arrayBuffer();
        const buffer=await audioContext.decodeAudioData(bytes.slice(0));
@@ -107,26 +153,33 @@
        source.onended=()=>{if(selected?.id===id)stop();};
        sourceNode=source;
        await audioContext.resume();
-       source.start();
+       source.start(0);
      } else {
-       // Fallback audio HTML5, senza usare la voce del sistema operativo.
        activeUrl=URL.createObjectURL(wav);
        audio=new Audio(activeUrl);
        audio.preservesPitch=false;
        audio.webkitPreservesPitch=false;
        audio.playbackRate=PRESETS[character]?.rate||1;
        audio.onended=()=>{if(selected?.id===id)stop();};
-       audio.onerror=()=>{if(selected?.id===id)stop();hooks.onError?.();};
+       audio.onerror=()=>{if(selected?.id===id){const err=Object.assign(new Error("Errore durante l'audio"),{code:"playback"});stop();hooks.onError?.(err);}};
        await audio.play();
      }
+     report("speaking");
      hooks.onStart?.();
      return true;
    } catch(error) {
-     if(selected?.id===id){stop();hooks.onError?.(error);}
+     if(selected?.id===id){
+       // Non ignoriamo silenziosamente gli errori Piper: li mostra la UI.
+       const type=error?.code || (phase.startsWith("download")?"download":phase);
+       stop();
+       hooks.onError?.(Object.assign(error instanceof Error?error:new Error(String(error)),{voiceStage:type}));
+     }
      return false;
-   } finally {busy=false;}
+   } finally {
+     busy=false;
+   }
  }
- const api={speak,stop,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,LOCALES,PRESETS};
+ const api={speak,stop,prepare,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,WASM_PATHS,LOCALES,PRESETS};
  if(typeof module==="object" && module.exports)module.exports=api;
  else root.GattoVoce=api;
 })(typeof window!=="undefined"?window:globalThis);

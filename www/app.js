@@ -135,18 +135,37 @@
 
   async function pronuncia(frase) {
     const stato=leggi();
-    $("stato-voce").textContent=t("voiceLoading");
+    const status=$("stato-voce");
+    status.textContent=t("voicePreparing");
     const ok=await GattoVoce.speak(frase,stato.lingua,stato.carattere,{
-      onStart:()=>{ $("stato-voce").textContent=t("voiceBeta");GattoAnimato.parla();},
+      onProgress:(phase)=>{
+        if(phase.startsWith("download:")) {
+          status.textContent=t("voiceDownloading",{n:phase.slice(9)});
+        } else if(phase==="download" || phase==="loading") {
+          status.textContent=t("voicePreparing");
+        } else if(phase==="playback") {
+          status.textContent=t("voicePlayback");
+        } else if(phase==="speaking") {
+          status.textContent=t("voiceSpeaking");
+        }
+      },
+      onStart:()=>{GattoAnimato.parla();status.textContent=t("voiceSpeaking");},
       onEnd:()=>{GattoAnimato.ferma();},
-      onError:()=>{$("stato-voce").textContent=t("voiceError");GattoAnimato.ferma();}
+      onError:(error)=>{
+        GattoAnimato.ferma();
+        // Codice diagnostico compatto e leggibile anche senza console browser.
+        const stage=String(error?.voiceStage||error?.code||"audio").replace(/[^a-z]/gi,"").slice(0,16);
+        status.textContent=t("voiceRetry")+" ("+stage+")";
+      }
     });
-    if(!ok) $("stato-voce").textContent=t("voiceError");
+    if(!ok && !status.textContent.includes("(")) status.textContent=t("voiceTapToListen");
   }
 
   $("btn-voce").addEventListener("click", () => {
     const frase = $("esito-frase").textContent;
-    if (frase && !GattoVoce.isBusy()) pronuncia(frase);
+    if (!frase) return;
+    GattoVoce.prepare(); // attiva Web Audio dentro il gesto del dito su iPhone
+    if(!GattoVoce.isBusy()) pronuncia(frase);
   });
 
   function mostraEsito(approva, frase, testo) {
@@ -155,9 +174,11 @@
     $("esito-frase").textContent = frase;
     $("esito").hidden = false;
     $("btn-voce").hidden = false;
-    $("stato-voce").textContent=t("voiceInfo");
-    // L'utente avvia volontariamente il modello Piper con il pulsante Ascolta.
-    // Non usiamo Siri né scarichiamo modelli vocali senza consenso.
+    $("voce-info").textContent=t("voiceFirstDownload");
+    $("stato-voce").textContent=t("voicePreparing");
+    // Prova a parlare automaticamente. Safari puo' richiedere un altro tocco:
+    // il pulsante Ascolta rimane sempre disponibile.
+    pronuncia(frase);
   }
 
   // Restituisce { approva, frase, rimaste } oppure { limite: true }.
@@ -264,6 +285,8 @@
     evento.preventDefault();
     const testo = $("decisione").value.trim();
     if (!testo) return;
+    // Un blocco audio avviato nel gesto utente rimane sbloccato in attesa dell'AI.
+    GattoVoce.prepare();
     consegna(testo);
   });
 
