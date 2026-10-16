@@ -10,6 +10,9 @@
   const SERVER_ATTIVO = !SERVER.startsWith("INSERISCI");
   const CHIAVE = "gatto.stato";
   const LIMITE = 10;
+  const I18N = window.GattoLingue;
+  const t = (key,vars) => I18N.text(leggi().lingua,key,vars);
+  const linguaIniziale = I18N.normalize(navigator.language||"it");
 
   // Modalita' di prova: decisioni illimitate. Si attiva toccando cinque volte il titolo.
   function provaAttiva() {
@@ -22,9 +25,9 @@
 
   function leggi() {
     try {
-      return Object.assign({ carattere: "dolce", decisioni: [], dispositivo: null }, JSON.parse(localStorage.getItem(CHIAVE)) || {});
+      return Object.assign({ carattere: "dolce", lingua: linguaIniziale, decisioni: [], dispositivo: null }, JSON.parse(localStorage.getItem(CHIAVE)) || {});
     } catch (errore) {
-      return { carattere: "dolce", decisioni: [], dispositivo: null };
+      return { carattere: "dolce", lingua: linguaIniziale, decisioni: [], dispositivo: null };
     }
   }
 
@@ -53,12 +56,12 @@
     lista.innerHTML = "";
     const decisioni = Gatto.decisioniDi(stato.decisioni, oggi());
     if (decisioni.length === 0) {
-      lista.innerHTML = "<li>Nessuna decisione ancora.</li>";
+      lista.innerHTML = "<li>" + t("noneToday") + "</li>";
     }
     decisioni.forEach((d) => {
       const riga = document.createElement("li");
       riga.className = "rimandabile";
-      riga.title = "Tocca per rimandarla al gatto";
+      riga.title = t("submit");
       const testoRiga = document.createElement("span");
       testoRiga.textContent = d.testo;
       const esito = document.createElement("strong");
@@ -72,73 +75,78 @@
   function mostraRiepilogo(stato) {
     const r = Gatto.riepilogo(stato.decisioni, oggi());
     $("riepilogo").textContent = r.totale === 0
-      ? "Nessuna decisione negli ultimi 7 giorni."
-      : "Approvate: " + r.approvate + " · Bocciate: " + r.bocciate + " (totale " + r.totale + ")";
+      ? t("noneWeek")
+      : t("stats",{yes:r.approvate,no:r.bocciate,total:r.totale});
   }
 
   function mostraContatore(stato) {
     if (provaAttiva()) {
-      $("contatore").textContent = "Modalità prova: decisioni illimitate";
+      $("contatore").textContent = t("trial");
       $("btn-giudica").disabled = false;
       return;
     }
     const restanti = rimasteOggi(stato);
     $("contatore").textContent = restanti > 0
-      ? "Decisioni rimaste per oggi: " + restanti
-      : "Per oggi il gatto ha finito. Torna domani.";
+      ? t("remaining",{n:restanti})
+      : t("limit");
     $("btn-giudica").disabled = restanti <= 0;
   }
 
   function aggiornaCarattere(stato) {
     document.querySelectorAll(".car").forEach((b) => {
       b.classList.toggle("attivo", b.dataset.carattere === stato.carattere);
+      b.textContent = t(b.dataset.carattere);
     });
     const fileFoto = "img/gatto-" + stato.carattere + "-esatto.webp";
     if (!$("gatto").src.endsWith(fileFoto)) $("gatto").src = fileFoto;
-    $("gatto").alt = "Gatto Giudice: " + stato.carattere;
+    $("gatto").alt = t("title") + ": " + t(stato.carattere);
     GattoAnimato.aggiorna(stato.carattere);
   }
 
+  function aggiornaLingua(stato) {
+    const lang=I18N.normalize(stato.lingua);
+    document.documentElement.lang=lang;
+    document.documentElement.dir=lang==="ar" ? "rtl" : "ltr";
+    document.title=t("title");
+    $("titolo").textContent=t("title");
+    $("lingua-label").textContent=t("language");
+    $("lingua").value=lang;
+    $("decisione").placeholder=t("placeholder");
+    $("btn-giudica").textContent=t("submit");
+    $("btn-voce").textContent="🔊 " + t("listen");
+    $("voce-info").textContent=t("voiceInfo");
+    $("titolo-oggi").textContent=t("today");
+    $("titolo-settimana").textContent=t("week");
+    if ($("esito").hidden) $("fumetto").textContent=t("intro");
+  }
   function aggiornaTutto() {
     const stato = leggi();
+    aggiornaLingua(stato);
     aggiornaCarattere(stato);
     mostraLista(stato);
     mostraRiepilogo(stato);
     mostraContatore(stato);
   }
 
-  let voceCorrente = null;
-
   function fermaVoce() {
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    voceCorrente = null;
+    GattoVoce.stop();
     GattoAnimato.ferma();
   }
 
-  function pronuncia(frase) {
-    if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
-    fermaVoce();
-    const voce = new SpeechSynthesisUtterance(frase);
-    voceCorrente = voce;
-    voce.lang = "it-IT";
-    voce.rate = 0.93;
-    voce.pitch = 0.85;
-    voce.onstart = () => { if (voceCorrente === voce) GattoAnimato.parla(); };
-    voce.onboundary = () => { if (voceCorrente === voce) GattoAnimato.parola(); };
-    const termina = () => {
-      if (voceCorrente === voce) {
-        voceCorrente = null;
-        GattoAnimato.ferma();
-      }
-    };
-    voce.onend = termina;
-    voce.onerror = termina;
-    window.speechSynthesis.speak(voce);
+  async function pronuncia(frase) {
+    const stato=leggi();
+    $("stato-voce").textContent=t("voiceLoading");
+    const ok=await GattoVoce.speak(frase,stato.lingua,stato.carattere,{
+      onStart:()=>{ $("stato-voce").textContent=t("voiceBeta");GattoAnimato.parla();},
+      onEnd:()=>{GattoAnimato.ferma();},
+      onError:()=>{$("stato-voce").textContent=t("voiceError");GattoAnimato.ferma();}
+    });
+    if(!ok) $("stato-voce").textContent=t("voiceError");
   }
 
   $("btn-voce").addEventListener("click", () => {
     const frase = $("esito-frase").textContent;
-    if (frase) pronuncia(frase);
+    if (frase && !GattoVoce.isBusy()) pronuncia(frase);
   });
 
   function mostraEsito(approva, frase, testo) {
@@ -146,9 +154,10 @@
     $("pollice").textContent = approva ? "👍" : "👎";
     $("esito-frase").textContent = frase;
     $("esito").hidden = false;
-    $("btn-voce").hidden = !("speechSynthesis" in window);
-    // Riproduzione automatica dove consentita; su iPhone e' disponibile il pulsante Ascolta.
-    pronuncia(frase);
+    $("btn-voce").hidden = false;
+    $("stato-voce").textContent=t("voiceInfo");
+    // L'utente avvia volontariamente il modello Piper con il pulsante Ascolta.
+    // Non usiamo Siri né scarichiamo modelli vocali senza consenso.
   }
 
   // Restituisce { approva, frase, rimaste } oppure { limite: true }.
@@ -162,7 +171,7 @@
     const risposta = await fetch(SERVER + "/giudica", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decisione: testo, carattere: stato.carattere, dispositivo: dispositivo }),
+      body: JSON.stringify({ decisione: testo, carattere: stato.carattere, dispositivo: dispositivo, lingua: I18N.normalize(stato.lingua) }),
     });
     if (risposta.status === 429) {
       const info = await risposta.json().catch(() => ({}));
@@ -182,18 +191,18 @@
     fermaVoce();
     GattoAnimato.pensa(true);
     $("btn-giudica").disabled = true;
-    $("fumetto").textContent = "Il gatto ci pensa...";
+    $("fumetto").textContent = t("thinking");
     try {
       const dati = await chiediVerdetto(stato, testo, dispositivo);
       if (dati.limite) {
-        $("fumetto").textContent = "Per oggi il gatto ha finito. Torna domani.";
+        $("fumetto").textContent = t("limit");
         stato.rimaste = 0;
         stato.rimasteData = oggi();
         scrivi(stato);
         return;
       }
       if (dati.pausa) {
-        $("fumetto").textContent = dati.pausa;
+        $("fumetto").textContent = t("pause");
         return;
       }
       stato.decisioni.push({ data: oggi(), testo: testo, approva: dati.approva, frase: dati.frase });
@@ -206,9 +215,7 @@
       mostraEsito(dati.approva, dati.frase, testo);
       $("decisione").value = "";
     } catch (errore) {
-      $("fumetto").textContent = SERVER_ATTIVO
-        ? "Il gatto non risponde. Riprova tra poco."
-        : "Qualcosa è andato storto. Riprova.";
+      $("fumetto").textContent = t("serverError");
     } finally {
       GattoAnimato.pensa(false);
       $("btn-giudica").disabled = false;
@@ -221,8 +228,23 @@
       const stato = leggi();
       stato.carattere = b.dataset.carattere;
       scrivi(stato);
+      fermaVoce();
+      $("esito").hidden=true;
+      $("btn-voce").hidden=true;
+      $("stato-voce").textContent="";
       aggiornaTutto();
     });
+  });
+
+  $("lingua").addEventListener("change", (evento) => {
+    const stato=leggi();
+    stato.lingua=I18N.normalize(evento.target.value);
+    scrivi(stato);
+    fermaVoce();
+    $("esito").hidden=true;
+    $("btn-voce").hidden=true;
+    $("stato-voce").textContent="";
+    aggiornaTutto();
   });
 
   // Cinque tocchi sul titolo attivano o disattivano la modalita' di prova.
@@ -233,7 +255,7 @@
       tocchi = 0;
       const nuova = !provaAttiva();
       localStorage.setItem("gatto.prova", nuova ? "si" : "no");
-      alert(nuova ? "Modalità prova attiva: decisioni illimitate." : "Modalità prova disattivata.");
+      alert(nuova ? t("trialOn") : t("trialOff"));
       aggiornaTutto();
     }
   });

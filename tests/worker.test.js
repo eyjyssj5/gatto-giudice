@@ -33,7 +33,7 @@ test("AI restituisce sentenza strutturata in tema", async () => {
   };
   const risultato = await (await worker()).fetch(request(dati), env);
   assert.equal(risultato.status, 200);
-  assert.deepEqual(await risultato.json(), {approva: true, frase: "Camminare fa bene, basta che tu non parta per l'altra galassia."});
+  assert.deepEqual(await risultato.json(), {approva: true, frase: "Camminare fa bene, basta che tu non parta per l'altra galassia.", lingua: "it"});
   assert.equal(chiamate, 1);
 });
 
@@ -57,4 +57,39 @@ test("Input vuoto o eccessivo rifiutato", async () => {
 test("Risposta AI non valida restituisce errore, non una frase a caso", async () => {
   const env = {LIMITER: {limit: async () => ({success: true})}, AI: {run: async () => ({response:"Ciao!"})}};
   assert.equal((await (await worker()).fetch(request(dati), env)).status, 502);
+});
+
+test("le 12 lingue sono accettate e comunicate al modello AI", async () => {
+  const codes=["it","es","en","pt","fr","de","nl","pl","ru","tr","ar","zh"];
+  const prompts=[];
+  const env={
+    LIMITER:{limit:async()=>({success:true})},
+    AI:{run:async(model,params)=>{
+      prompts.push(params.messages[0].content);
+      return {response:"APPROVO: Verdetto di prova"};
+    }}
+  };
+  for(const lingua of codes){
+    const res=await (await worker()).fetch(request({...dati,lingua}),env);
+    assert.equal(res.status,200,lingua);
+    assert.equal((await res.json()).lingua,lingua);
+  }
+  assert.equal(prompts.length,12);
+  assert.match(prompts[10],/العربية/);
+  assert.match(prompts[11],/简体中文/);
+});
+
+test("i protocolli di Capacitor iOS e Android hanno CORS consentito",async()=>{
+  const w=await worker();
+  for(const origin of ["capacitor://localhost","http://localhost","https://localhost"]){
+    const preflight=await w.fetch(new Request(BASE,{method:"OPTIONS",headers:{Origin:origin}}),{});
+    assert.equal(preflight.status,204);
+    assert.equal(preflight.headers.get("Access-Control-Allow-Origin"),origin);
+  }
+});
+
+test("lingue non approvate sono respinte prima di consumare AI",async()=>{
+  const w=await worker();
+  const res=await w.fetch(request({...dati,lingua:"xx"}),{AI:{},LIMITER:{}});
+  assert.equal(res.status,400);
 });
