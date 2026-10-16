@@ -1,0 +1,32 @@
+name: Prova reale Piper nel browser
+on:
+  pull_request:
+    paths: ['www/voce.js', 'www/app.js', 'www/i18n.js', 'scripts/test-piper-browser.cjs', '.github/workflows/test-piper-browser.yml']
+  workflow_dispatch:
+jobs:
+  piper-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installa browser automation
+        run: npm install --no-save --no-audit --no-fund puppeteer-core
+      - name: Controlla browser
+        run: |
+          command -v google-chrome || command -v chromium
+          echo "CHROME_BIN=$(command -v google-chrome || command -v chromium)" >> "$GITHUB_ENV"
+      - name: Avvia sito di prova locale
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 --directory www > /tmp/gatto-test.log 2>&1 &
+          sleep 2
+      - name: Genera realmente la voce nel browser mobile
+        run: node scripts/test-piper-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: errore-voce-screenshot
+          path: piper-browser-diagnostica.png
+          if-no-files-found: ignore
