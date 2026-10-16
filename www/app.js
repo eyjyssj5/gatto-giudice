@@ -10,6 +10,8 @@
   const SERVER_ATTIVO = !SERVER.startsWith("INSERISCI");
   const CHIAVE = "gatto.stato";
   const LIMITE = 10;
+  const ATTESA_MASSIMA_MS = 15000;
+  let richiestaInCorso = false;
   const I18N = window.GattoLingue;
   const t = (key,vars) => I18N.text(leggi().lingua,key,vars);
   const linguaIniziale = I18N.normalize(navigator.language||"it");
@@ -82,14 +84,14 @@
   function mostraContatore(stato) {
     if (provaAttiva()) {
       $("contatore").textContent = t("trial");
-      $("btn-giudica").disabled = false;
+      $("btn-giudica").disabled = richiestaInCorso;
       return;
     }
     const restanti = rimasteOggi(stato);
     $("contatore").textContent = restanti > 0
       ? t("remaining",{n:restanti})
       : t("limit");
-    $("btn-giudica").disabled = restanti <= 0;
+    $("btn-giudica").disabled = richiestaInCorso || restanti <= 0;
   }
 
   function aggiornaCarattere(stato) {
@@ -117,7 +119,7 @@
     $("voce-info").textContent=t("voiceInfo");
     $("titolo-oggi").textContent=t("today");
     $("titolo-settimana").textContent=t("week");
-    if ($("esito").hidden) $("fumetto").textContent=t("intro");
+    // Non cancellare il messaggio di attesa o errore durante il refresh della UI.
   }
   function aggiornaTutto() {
     const stato = leggi();
@@ -176,9 +178,8 @@
     $("btn-voce").hidden = false;
     $("voce-info").textContent=t("voiceFirstDownload");
     $("stato-voce").textContent=t("voicePreparing");
-    // Prova a parlare automaticamente. Safari puo' richiedere un altro tocco:
-    // il pulsante Ascolta rimane sempre disponibile.
-    pronuncia(frase);
+    // La voce parte con un tocco dedicato: evitiamo download pesanti automatici
+    // su iPhone e blocchi dell'interfaccia nel mezzo della sentenza.
   }
 
   // Restituisce { approva, frase, rimaste } oppure { limite: true }.
@@ -189,11 +190,19 @@
       const usate = Gatto.decisioniDi(stato.decisioni, oggi()).length + 1;
       return { approva: giudizio.approva, frase: giudizio.frase, rimaste: provaAttiva() ? LIMITE : LIMITE - usate };
     }
-    const risposta = await fetch(SERVER + "/giudica", {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), ATTESA_MASSIMA_MS);
+    let risposta;
+    try {
+      risposta = await fetch(SERVER + "/giudica", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ decisione: testo, carattere: stato.carattere, dispositivo: dispositivo, lingua: I18N.normalize(stato.lingua) }),
+      signal: controller.signal,
     });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (risposta.status === 429) {
       const info = await risposta.json().catch(() => ({}));
       return { pausa: info.errore || "Il gatto sta riposando. Riprova tra un minuto." };
@@ -203,15 +212,18 @@
   }
 
   async function consegna(testo) {
+    if (richiestaInCorso) return;
     const stato = leggi();
     if (rimasteOggi(stato) <= 0) {
       aggiornaTutto();
       return;
     }
+    richiestaInCorso = true;
     const dispositivo = dispositivoDi(stato);
     fermaVoce();
     GattoAnimato.pensa(true);
     $("btn-giudica").disabled = true;
+    $("btn-voce").hidden = true;
     $("fumetto").textContent = t("thinking");
     try {
       const dati = await chiediVerdetto(stato, testo, dispositivo);
@@ -236,10 +248,11 @@
       mostraEsito(dati.approva, dati.frase, testo);
       $("decisione").value = "";
     } catch (errore) {
-      $("fumetto").textContent = t("serverError");
+      const expired = errore && errore.name === "AbortError";
+      $("fumetto").textContent = expired ? t("timeout") : t("serverError");
     } finally {
+      richiestaInCorso = false;
       GattoAnimato.pensa(false);
-      $("btn-giudica").disabled = false;
       aggiornaTutto();
     }
   }
@@ -285,10 +298,9 @@
     evento.preventDefault();
     const testo = $("decisione").value.trim();
     if (!testo) return;
-    // Un blocco audio avviato nel gesto utente rimane sbloccato in attesa dell'AI.
-    GattoVoce.prepare();
     consegna(testo);
   });
 
   aggiornaTutto();
+  $("fumetto").textContent=t("intro");
 })();
