@@ -137,14 +137,23 @@ export default {
           { role: "system", content: istruzioni },
           { role: "user", content: "Decisione da giudicare: " + decisione },
         ],
-        max_tokens: 160,
-        temperature: 0.3,
-        chat_template_kwargs: { enable_thinking: false },
+        max_tokens: 220,
+        temperature: 0.45,
       });
 
       let sentenza=leggiSentenza(risultato?.response);
-      // Nessuna seconda interrogazione AI. L'utente non deve attendere una
-      // seconda generazione per una sentenza malformata.
+      if(!sentenza){
+        // Ritenta solo se il modello non ha rispettato il formato.
+        const ripetizione=await env.AI.run(MODEL,{
+          messages:[
+            {role:"system",content:"You are Judge Cat. Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one short sentence in "+LINGUE[lingua]+"\\\"}. Do not translate JSON keys. Do not add explanations."},
+            {role:"user",content:"Evaluate this decision: "+decisione}
+          ],
+          max_tokens:190,
+          temperature:0.3
+        });
+        sentenza=leggiSentenza(ripetizione?.response);
+      }
       if(!sentenza){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
