@@ -64,6 +64,26 @@ function leggiSentenza(raw) {
   return null;
 }
 
+// I modelli Cloudflare possono restituire `response` oppure il formato
+// Chat Completions `choices[0].message.content`. Non presumere un solo formato.
+function estraiRispostaAI(result) {
+  if (typeof result==="string") return result;
+  return result?.response ??
+    result?.choices?.[0]?.message?.content ??
+    result?.output_text ??
+    result?.result?.response ??
+    result?.result ??
+    "";
+}
+function diagnosticaRispostaAI(result) {
+  const raw=estraiRispostaAI(result);
+  return {
+    keys:result&&typeof result==="object"?Object.keys(result).slice(0,12):[typeof result],
+    tipo:typeof raw,
+    sample:String(raw||"").slice(0,340)
+  };
+}
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
@@ -141,7 +161,7 @@ export default {
         temperature: 0.45,
       });
 
-      let sentenza=leggiSentenza(risultato?.response);
+      let sentenza=leggiSentenza(estraiRispostaAI(risultato));
       if(!sentenza){
         // Ritenta solo se il modello non ha rispettato il formato.
         const ripetizione=await env.AI.run(MODEL,{
@@ -152,7 +172,11 @@ export default {
           max_tokens:190,
           temperature:0.3
         });
-        sentenza=leggiSentenza(ripetizione?.response);
+        sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
+        // Per test interni: il formato restituito dal motore non è uniforme.
+        if(!sentenza && dispositivo.startsWith("smoke")){
+          return json({errore:"Risposta AI non riconosciuta",debug:{prima:diagnosticaRispostaAI(risultato),seconda:diagnosticaRispostaAI(ripetizione)}},502,origin);
+        }
       }
       if(!sentenza){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
