@@ -110,18 +110,19 @@ test("comprende verdetti con prefisso arabo e cinese", async () => {
   }
 });
 
-test("il modello non viene chiamato due volte se la risposta è non valida", async()=>{
+test("se manca il prefisso chiede al modello un secondo tentativo", async()=>{
   let calls=0;
   const env={
     LIMITER:{limit:async()=>({success:true})},
     AI:{run:async()=>{
       calls++;
-      return {response:"Una frase priva del formato di sentenza."};
+      return {response:calls===1?"Ecco il mio parere.":"BOCCIO: Non e' una scelta prudente."};
     }}
   };
   const r=await (await worker()).fetch(request({...dati,lingua:"it"}),env);
-  assert.equal(r.status,502);
-  assert.equal(calls,1);
+  assert.equal(r.status,200);
+  assert.equal((await r.json()).approva,false);
+  assert.equal(calls,2);
 });
 
 test("risposta JSON del modello multilingue riconosciuta", async()=>{
