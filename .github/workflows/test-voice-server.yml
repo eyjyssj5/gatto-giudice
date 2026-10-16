@@ -1,0 +1,34 @@
+name: Verifica server vocale open source
+on:
+  pull_request:
+    paths:
+      - 'voice_server/**'
+      - 'worker/index.mjs'
+      - 'www/voce.js'
+      - '.github/workflows/test-voice-server.yml'
+  push:
+    branches: [voci-autentiche-server-12-lingue]
+    paths:
+      - 'voice_server/**'
+      - '.github/workflows/test-voice-server.yml'
+jobs:
+  voice-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installa Piper e server, senza scaricare le voci
+        run: |
+          pip install -r voice_server/requirements.txt httpx
+      - name: Controlla API, autenticazione e WAV di prova
+        run: |
+          python -m unittest voice_server.test_server -v
+      - name: Compila Python per intercettare errori sintattici
+        run: python -m compileall -q voice_server
+      - name: Convalida sintassi Docker Compose
+        run: |
+          cp voice_server/.env.example voice_server/.env
+          cd voice_server && docker compose config --quiet
