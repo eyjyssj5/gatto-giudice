@@ -25,7 +25,7 @@ test("AI restituisce sentenza strutturata in tema", async () => {
   const env = {
     LIMITER: {limit: async () => ({success: true})},
     AI: {run: async (model, options) => {
-      assert.match(model, /llama-3.1/);
+      assert.match(model, /glm-4.7/);
       assert.match(options.messages[1].content, /a piedi/);
       chiamate++;
       return {response: "APPROVO: Camminare fa bene, basta che tu non parta per l'altra galassia."};
@@ -123,4 +123,21 @@ test("se manca il prefisso chiede al modello un secondo tentativo", async()=>{
   assert.equal(r.status,200);
   assert.equal((await r.json()).approva,false);
   assert.equal(calls,2);
+});
+
+test("risposta JSON del modello multilingue riconosciuta", async()=>{
+  const w=await worker();
+  const cases=[
+    {lingua:"ar",response:'{"verdetto":"APPROVO","frase":"هذا قرار مناسب."}',approved:true},
+    {lingua:"es",response:'{"verdetto":"BOCCIO","frase":"No me parece una buena decisión."}',approved:false},
+    {lingua:"zh",response:'{"verdetto":"APPROVO","frase":"每天坚持学习很好。"}',approved:true}
+  ];
+  for(const sample of cases){
+    const env={LIMITER:{limit:async()=>({success:true})},AI:{run:async()=>({response:sample.response})}};
+    const r=await w.fetch(request({...dati,lingua:sample.lingua}),env);
+    assert.equal(r.status,200,sample.lingua);
+    const result=await r.json();
+    assert.equal(result.approva,sample.approved);
+    assert.ok(result.frase.length>5);
+  }
 });
