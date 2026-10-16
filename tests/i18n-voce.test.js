@@ -85,3 +85,43 @@ test("lo stato vocale e i messaggi di errore sono tradotti in 12 lingue",()=>{
     assert.ok(I18N.text(code,"voiceDownloading",{n:48}).includes("48"),code);
   }
 });
+
+test("interfaccia evita attesa illimitata e download Piper automatico",()=>{
+  const app=fs.readFileSync(path.join(__dirname,"../www/app.js"),"utf8");
+  assert.match(app,/ATTESA_MASSIMA_MS = 15000/);
+  assert.match(app,/new AbortController\(\)/);
+  assert.match(app,/richiestaInCorso/);
+  const resultBlock=app.slice(app.indexOf("function mostraEsito"),app.indexOf("// Restituisce { approva"));
+  assert.doesNotMatch(resultBlock,/pronuncia\(frase\)/);
+});
+
+test("mobile usa voce provvisoria senza download, 12 lingue e tre timbri",async()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(__dirname,"../www/voce.js"),"utf8");
+  const spoken=[],calls={cancel:0};
+  const device={
+    navigator:{userAgent:"Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X)"},
+    SpeechSynthesisUtterance:class{
+      constructor(text){this.text=text;}
+    },
+    speechSynthesis:{
+      cancel(){calls.cancel++;},
+      getVoices(){return [{lang:"it-IT",name:"Italiano"},{lang:"es-ES",name:"Español"}];},
+      speak(v){spoken.push(v);v.onstart?.();}
+    },
+    setTimeout,clearTimeout
+  };
+  const sandbox={window:device, setTimeout, clearTimeout,console};
+  vm.runInNewContext(source,sandbox);
+  assert.equal(device.GattoVoce.usesSystemVoice(),true);
+  for(const lang of ["it","es"]){
+    for(const character of ["dolce","severo","ironico"]){
+      const result=await device.GattoVoce.speak("Prova",lang,character,{onStart:()=>{}});
+      assert.equal(result,true);
+      assert.equal(spoken.at(-1).lang,device.GattoVoce.SYSTEM_LANGUAGES[lang]);
+      spoken.at(-1).onend?.();
+    }
+  }
+  assert.notEqual(device.GattoVoce.SYSTEM_PROFILES.dolce.pitch,device.GattoVoce.SYSTEM_PROFILES.severo.pitch);
+  assert.equal(spoken.length,6);
+});
