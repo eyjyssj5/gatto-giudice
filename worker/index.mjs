@@ -80,7 +80,10 @@ function diagnosticaRispostaAI(result) {
   return {
     keys:result&&typeof result==="object"?Object.keys(result).slice(0,12):[typeof result],
     tipo:typeof raw,
-    sample:String(raw||"").slice(0,340)
+    sample:String(raw||"").slice(0,250),
+    msgKeys:result?.choices?.[0]?.message?Object.keys(result.choices[0].message):[],
+    reasonLength:String(result?.choices?.[0]?.message?.reasoning_content||"").length,
+    finishReason:result?.choices?.[0]?.finish_reason||""
   };
 }
 
@@ -157,8 +160,9 @@ export default {
           { role: "system", content: istruzioni },
           { role: "user", content: "Decisione da giudicare: " + decisione },
         ],
-        max_tokens: 220,
-        temperature: 0.45,
+        max_completion_tokens: 190,
+        temperature: 0.3,
+        chat_template_kwargs: { enable_thinking: false },
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
@@ -169,8 +173,9 @@ export default {
             {role:"system",content:"You are Judge Cat. Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one short sentence in "+LINGUE[lingua]+"\\\"}. Do not translate JSON keys. Do not add explanations."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
-          max_tokens:190,
-          temperature:0.3
+          max_completion_tokens:170,
+          temperature:0.2,
+          chat_template_kwargs:{enable_thinking:false}
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
         // Per test interni: il formato restituito dal motore non è uniforme.
