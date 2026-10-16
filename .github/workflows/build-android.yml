@@ -4,6 +4,9 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/build-android.yml"
+      - "www/**"
+      - "package.json"
+      - "capacitor.config.json"
   workflow_dispatch:
 jobs:
   android-debug:
