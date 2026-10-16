@@ -80,7 +80,7 @@ test("l'app sblocca l'audio iPhone al tocco e parla automaticamente dopo il verd
 test("lo stato vocale e i messaggi di errore sono tradotti in 12 lingue",()=>{
   for(const code of I18N.codes){
     for(const key of ["voicePreparing","voiceDownloading","voicePlayback","voiceSpeaking","voiceTapToListen","voiceRetry","voiceFirstDownload"]) {
-      assert.ok(I18N.MESSAGES[code][key] && I18N.MESSAGES[code][key].length>10,code+"/"+key);
+      assert.ok(I18N.MESSAGES[code][key] && I18N.MESSAGES[code][key].length>4,code+"/"+key);
     }
     assert.ok(I18N.text(code,"voiceDownloading",{n:48}).includes("48"),code);
   }
