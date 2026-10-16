@@ -14,6 +14,86 @@
    piperData:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.data",
    piperWasm:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm"
  });
+ const SYSTEM_LANGUAGES=Object.freeze({
+   it:"it-IT",es:"es-ES",en:"en-US",pt:"pt-PT",fr:"fr-FR",de:"de-DE",
+   nl:"nl-NL",pl:"pl-PL",ru:"ru-RU",tr:"tr-TR",ar:"ar-SA",zh:"zh-CN"
+ });
+ const SYSTEM_PROFILES=Object.freeze({
+   dolce:{pitch:1.34,rate:1.06},
+   severo:{pitch:0.73,rate:0.88},
+   ironico:{pitch:1.12,rate:1.15}
+ });
+ function usesSystemVoice() {
+   // Fallback temporaneo: inferenza Piper mobile troppo pesante, interfaccia
+   // deve restare pronta. Si lascia Piper per il browser desktop.
+   return /iPhone|iPad|iPod|Android/i.test(root.navigator?.userAgent||"") &&
+     typeof root.speechSynthesis!=="undefined" &&
+     typeof root.SpeechSynthesisUtterance==="function";
+ }
+ let nativeBusy=false;
+ let nativeUtterance=null;
+ let nativeTimeout=null;
+ function clearNative() {
+   if(nativeTimeout){clearTimeout(nativeTimeout);nativeTimeout=null;}
+   if(nativeUtterance){
+     nativeUtterance.onstart=null;
+     nativeUtterance.onend=null;
+     nativeUtterance.onerror=null;
+     nativeUtterance=null;
+   }
+   nativeBusy=false;
+   try {root.speechSynthesis?.cancel();}catch(_err){}
+ }
+ function speakSystem(text,language,character,hooks={}) {
+   // Questa funzione viene chiamata sincronicamente dal click dell'utente,
+   // condizione necessaria per le policy iOS di avvio audio.
+   clearNative();
+   const lang=SYSTEM_LANGUAGES[normalizeLocale(language)];
+   const profile=SYSTEM_PROFILES[character]||SYSTEM_PROFILES.dolce;
+   try {
+     const utterance=new root.SpeechSynthesisUtterance(String(text).trim().slice(0,240));
+     utterance.lang=lang;
+     utterance.pitch=profile.pitch;
+     utterance.rate=profile.rate;
+     utterance.volume=1;
+     const voices=root.speechSynthesis.getVoices();
+     const candidates=voices.filter(v=>v.lang?.toLowerCase().startsWith(lang.slice(0,2).toLowerCase()));
+     if(candidates.length)utterance.voice=candidates[character==="severo" ? Math.min(1,candidates.length-1) : character==="ironico" ? candidates.length-1 : 0];
+     nativeBusy=true;
+     nativeUtterance=utterance;
+     hooks.onProgress?.("playback");
+     utterance.onstart=()=>{
+       if(nativeUtterance!==utterance)return;
+       if(nativeTimeout){clearTimeout(nativeTimeout);nativeTimeout=null;}
+       hooks.onProgress?.("speaking");
+       hooks.onStart?.();
+     };
+     utterance.onend=()=>{
+       if(nativeUtterance!==utterance)return;
+       clearNative();
+       hooks.onEnd?.();
+     };
+     utterance.onerror=(event)=>{
+       if(nativeUtterance!==utterance)return;
+       clearNative();
+       hooks.onError?.(Object.assign(new Error("Sintesi del telefono non disponibile"),{voiceStage:event?.error||"system"}));
+     };
+     // Alcune versioni Safari falliscono senza chiamare onstart/onerror.
+     nativeTimeout=setTimeout(()=>{
+       if(nativeUtterance===utterance && !root.speechSynthesis.speaking) {
+         clearNative();
+         hooks.onError?.(Object.assign(new Error("Il dispositivo non ha avviato la voce"),{voiceStage:"systemtimeout"}));
+       }
+     },6000);
+     root.speechSynthesis.cancel();
+     root.speechSynthesis.speak(utterance);
+     return Promise.resolve(true);
+   }catch(error) {
+     clearNative();
+     hooks.onError?.(Object.assign(error instanceof Error?error:new Error(String(error)),{voiceStage:"system"}));
+     return Promise.resolve(false);
+   }
+ }
  const LOCALES=Object.freeze({
    it:"it_IT",es:"es_ES",en:"en_US",pt:"pt_PT",fr:"fr_FR",de:"de_DE",
    nl:"nl_NL",pl:"pl_PL",ru:"ru_RU",tr:"tr_TR",ar:"ar_JO",zh:"zh_CN"
@@ -104,6 +184,7 @@
    return false;
  }
  function stop() {
+   clearNative();
    if(sourceNode) { sourceNode.onended=null;try{sourceNode.stop();}catch(_err){};sourceNode.disconnect();sourceNode=null; }
    if(audio){audio.pause();audio.onended=null;audio.onerror=null;audio=null;}
    if(activeUrl){URL.revokeObjectURL(activeUrl);activeUrl=null;}
@@ -111,6 +192,7 @@
    selected=null;
  }
  async function speak(text,language,character,hooks={}) {
+   if(usesSystemVoice())return speakSystem(text,language,character,hooks);
    if(busy) return false;
    stop();
    busy=true;
@@ -179,7 +261,7 @@
      busy=false;
    }
  }
- const api={speak,stop,prepare,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,WASM_PATHS,LOCALES,PRESETS};
+ const api={speak,stop,prepare,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy||nativeBusy,usesSystemVoice,SYSTEM_LANGUAGES,SYSTEM_PROFILES,WASM_PATHS,LOCALES,PRESETS};
  if(typeof module==="object" && module.exports)module.exports=api;
  else root.GattoVoce=api;
 })(typeof window!=="undefined"?window:globalThis);
