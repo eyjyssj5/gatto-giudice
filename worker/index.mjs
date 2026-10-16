@@ -11,7 +11,7 @@ const LINGUE = Object.freeze({
   fr:"français", de:"Deutsch", nl:"Nederlands", pl:"polski",
   ru:"русский", tr:"Türkçe", ar:"العربية", zh:"简体中文"
 });
-const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+const MODEL = "@cf/zai-org/glm-4.7-flash";
 const CARATTERI = new Set(["dolce", "severo", "ironico"]);
 
 function json(data, status = 200, origin = ORIGIN) {
@@ -34,7 +34,25 @@ const STILE = {
 
 // Il modello può tradurre anche il prefisso, malgrado l'istruzione.
 function leggiSentenza(raw) {
-  const testo=String(raw||"").trim().replace(/^[\s"'*]+/,"").replace(/[\s"'*]+$/,"");
+  if(raw && typeof raw==="object") {
+    const verdict=String(raw.verdetto||raw.decision||"").toUpperCase();
+    if(["APPROVO","BOCCIO"].includes(verdict)&&typeof raw.frase==="string"&&raw.frase.trim()){
+      return {approva:verdict==="APPROVO",frase:raw.frase.replace(/\s+/g," ").trim().slice(0,240)};
+    }
+  }
+  const originale=String(raw||"").trim();
+  // Accetta JSON anche quando il modello lo racchiude in un blocco di testo.
+  const begin=originale.indexOf("{"),end=originale.lastIndexOf("}");
+  if(begin>=0 && end>begin){
+    try{
+      const parsed=JSON.parse(originale.slice(begin,end+1));
+      const verdict=String(parsed.verdetto||parsed.decision||"").toUpperCase();
+      if(["APPROVO","BOCCIO"].includes(verdict)&&typeof parsed.frase==="string"&&parsed.frase.trim()){
+        return {approva:verdict==="APPROVO",frase:parsed.frase.replace(/\s+/g," ").trim().slice(0,240)};
+      }
+    }catch(_err){}
+  }
+  const testo=originale.replace(/^[\s"'*]+/,"").replace(/[\s"'*]+$/,"");
   const regole=[
     [true,/^(?:APPROVO|APROBADO|APROVO|APPROVED|J'APPROUVE|ICH STIMME ZU|GOEDGEKEURD|ZATWIERDZAM|ОДОБРЯЮ|ONAYLIYORUM|أوافق|موافق|أؤيد|赞成|同意)\s*[:：|\-–,.]?\s*([\s\S]+)$/iu],
     [false,/^(?:BOCCIO|RECHAZADO|REJEITO|REJECTED|JE REJETTE|ICH LEHNE AB|AFGEKEURD|ODRZUCAM|ОТКЛОНЯЮ|REDDEDİYORUM|لا أوافق|أرفض|مرفوض|反对|否决)\s*[:：|\-–,.]?\s*([\s\S]+)$/iu]
@@ -103,8 +121,10 @@ export default {
       "Lingua obbligatoria della risposta: " + LINGUE[lingua] + ".",
       "La decisione dell'utente puo' essere in un'altra lingua. Rispondi sempre e interamente nella lingua obbligatoria.",
       "Scrivi 1 o 2 frasi, massimo 220 caratteri.",
-      "Scrivi SEMPRE il prefisso tecnico APPROVO: oppure BOCCIO: in caratteri latini, poi la sentenza nella lingua richiesta.",
-      "Non tradurre il prefisso tecnico. Non usare altri prefissi.",
+      "Restituisci esclusivamente un oggetto JSON con queste due chiavi latine: verdetto e frase.",
+      "verdetto deve essere esattamente APPROVO oppure BOCCIO. La stringa frase deve essere nella lingua richiesta.",
+      "Esempio: {\\\"verdetto\\\":\\\"APPROVO\\\",\\\"frase\\\":\\\"La scelta e' sensata.\\\"}",
+      "Non tradurre le chiavi del JSON o le parole APPROVO e BOCCIO.",
       "Scegli se approvare dal significato del testo, non a caso. Varia formulazione.",
       "Non scrivere liste, markdown, emoji o spiegazioni del formato.",
       "Se trovi rischi seri o emergenze, evita umorismo dannoso e rispondi con sensibilita'.",
@@ -118,7 +138,7 @@ export default {
           { role: "user", content: "Decisione da giudicare: " + decisione },
         ],
         max_tokens: 220,
-        temperature: 0.85,
+        temperature: 0.45,
       });
 
       let sentenza=leggiSentenza(risultato?.response);
@@ -126,7 +146,7 @@ export default {
         // Ritenta solo se il modello non ha rispettato il formato.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
-            {role:"system",content:"You are Judge Cat. Reply in "+LINGUE[lingua]+". Start with EXACTLY APPROVO: or BOCCIO: in Latin letters. NEVER translate these two markers. Then one short verdict sentence in "+LINGUE[lingua]+". No markdown."},
+            {role:"system",content:"You are Judge Cat. Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one short sentence in "+LINGUE[lingua]+"\\\"}. Do not translate JSON keys. Do not add explanations."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
           max_tokens:190,
