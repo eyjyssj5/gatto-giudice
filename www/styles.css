@@ -62,3 +62,19 @@ button#btn-giudica:disabled { background: #8a9bad; }
 
 #btn-voce { font: inherit; border: 1px solid #b8c4d6; background: #fff; color: #2b2d42; border-radius: 999px; padding: 8px 16px; margin: 0 auto 12px; cursor: pointer; }
 #btn-voce[hidden] { display: none; }
+
+/* Interfaccia multilingue per web, Android e iOS. */
+.lingua-bar { display:flex; align-items:center; justify-content:center; gap:10px; margin:6px auto 16px; flex-wrap:wrap; }
+.lingua-bar label { font-weight:600; }
+.lingua-bar select {
+  font:inherit; min-width:182px; max-width:95%; border:1px solid #b8c4d6;
+  background:#fff; color:#2b2d42; border-radius:12px; padding:10px 12px;
+}
+#btn-voce:focus-visible, #btn-giudica:focus-visible, select:focus-visible, .car:focus-visible {
+  outline:3px solid #245c98; outline-offset:3px;
+}
+.voce-info { max-width:340px; margin:3px auto 9px; font-size:12px; line-height:1.4; color:#555c6d; }
+.stato-voce { min-height:18px; font-size:13px; margin:2px auto 8px; color:#444e65; }
+html[dir="rtl"] .lista { text-align:right; }
+html[dir="rtl"] input { text-align:right; }
+@media (max-width:370px) { .gatto-figura { width: min(280px,88vw); } .car { padding:8px 10px; } }
