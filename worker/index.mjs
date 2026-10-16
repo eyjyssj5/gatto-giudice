@@ -32,6 +32,20 @@ const STILE = {
   ironico: "Sagace, pungente, creativo, con sarcasmo leggero e battute sempre diverse.",
 };
 
+// Il modello può tradurre anche il prefisso, malgrado l'istruzione.
+function leggiSentenza(raw) {
+  const testo=String(raw||"").trim().replace(/^[\s"'*]+/,"").replace(/[\s"'*]+$/,"");
+  const regole=[
+    [true,/^(?:APPROVO|APROBADO|APROVO|APPROVED|J'APPROUVE|ICH STIMME ZU|GOEDGEKEURD|ZATWIERDZAM|ОДОБРЯЮ|ONAYLIYORUM|أوافق|موافق|أؤيد|赞成|同意)\s*[:：|\-–,.]?\s*([\s\S]+)$/iu],
+    [false,/^(?:BOCCIO|RECHAZADO|REJEITO|REJECTED|JE REJETTE|ICH LEHNE AB|AFGEKEURD|ODRZUCAM|ОТКЛОНЯЮ|REDDEDİYORUM|لا أوافق|أرفض|مرفوض|反对|否决)\s*[:：|\-–,.]?\s*([\s\S]+)$/iu]
+  ];
+  for(const [approva,pattern] of regole){
+    const m=testo.match(pattern);
+    if(m&&m[1].trim())return {approva,frase:m[1].replace(/\s+/g," ").trim().slice(0,240)};
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
@@ -107,16 +121,24 @@ export default {
         temperature: 0.85,
       });
 
-      const risposta = String(risultato?.response || "").trim();
-      const trovato = risposta.match(/^\s*(APPROVO|BOCCIO)\s*[:|\-]\s*([\s\S]+)$/i);
-      if (!trovato || !trovato[2].trim()) {
-        return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." }, 502);
+      let sentenza=leggiSentenza(risultato?.response);
+      if(!sentenza){
+        // Ritenta solo se il modello non ha rispettato il formato.
+        const ripetizione=await env.AI.run(MODEL,{
+          messages:[
+            {role:"system",content:"You are Judge Cat. Reply in "+LINGUE[lingua]+". Start with EXACTLY APPROVO: or BOCCIO: in Latin letters. NEVER translate these two markers. Then one short verdict sentence in "+LINGUE[lingua]+". No markdown."},
+            {role:"user",content:"Evaluate this decision: "+decisione}
+          ],
+          max_tokens:190,
+          temperature:0.3
+        });
+        sentenza=leggiSentenza(ripetizione?.response);
       }
-      return json({
-        approva: trovato[1].toUpperCase() === "APPROVO",
-        frase: trovato[2].replace(/\s+/g, " ").trim().slice(0, 240),
-        lingua
-      }, 200, origin);
+      if(!sentenza){
+        console.warn("Risposta AI senza prefisso valido per lingua",lingua);
+        return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
+      }
+      return json({...sentenza,lingua},200,origin);
     } catch (errore) {
       console.error("Errore Workers AI:", errore?.message || "sconosciuto");
       return json({ errore: "Il tribunale AI non e' disponibile. Riprova." }, 503);

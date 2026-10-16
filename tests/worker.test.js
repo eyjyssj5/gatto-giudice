@@ -93,3 +93,34 @@ test("lingue non approvate sono respinte prima di consumare AI",async()=>{
   const res=await w.fetch(request({...dati,lingua:"xx"}),{AI:{},LIMITER:{}});
   assert.equal(res.status,400);
 });
+
+test("comprende verdetti con prefisso arabo e cinese", async () => {
+  const w=await worker();
+  const cases=[
+    {lingua:"ar",response:"أوافق: دراسة اللغة كل يوم فكرة ممتازة.",expected:true},
+    {lingua:"ar",response:"أرفض: هذا قرار غير حكيم.",expected:false},
+    {lingua:"zh",response:"赞成：每天学习是个好决定。",expected:true},
+    {lingua:"zh",response:"反对：不建议这样做。",expected:false}
+  ];
+  for(const x of cases){
+    const env={LIMITER:{limit:async()=>({success:true})},AI:{run:async()=>({response:x.response})}};
+    const r=await w.fetch(request({...dati,lingua:x.lingua}),env);
+    assert.equal(r.status,200,x.lingua);
+    assert.equal((await r.json()).approva,x.expected);
+  }
+});
+
+test("se manca il prefisso chiede al modello un secondo tentativo", async()=>{
+  let calls=0;
+  const env={
+    LIMITER:{limit:async()=>({success:true})},
+    AI:{run:async()=>{
+      calls++;
+      return {response:calls===1?"Ecco il mio parere.":"BOCCIO: Non e' una scelta prudente."};
+    }}
+  };
+  const r=await (await worker()).fetch(request({...dati,lingua:"it"}),env);
+  assert.equal(r.status,200);
+  assert.equal((await r.json()).approva,false);
+  assert.equal(calls,2);
+});
