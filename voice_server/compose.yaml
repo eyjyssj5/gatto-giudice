@@ -1,0 +1,28 @@
+# Su Oracle Cloud Always Free, NON sul computer personale.
+# La porta 8765 non e' aperta su Internet: raggiungibile dal tunnel soltanto.
+services:
+  tts:
+    build: .
+    restart: unless-stopped
+    environment:
+      VOICE_SHARED_SECRET: ${VOICE_SHARED_SECRET:?Definisci VOICE_SHARED_SECRET nel file .env}
+      VOICE_DIR: /models
+    volumes:
+      - piper-models:/models
+    expose:
+      - "8765"
+    networks:
+      - backend
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:?Definisci CLOUDFLARE_TUNNEL_TOKEN nel file .env}
+    depends_on:
+      - tts
+    networks:
+      - backend
+networks:
+  backend:
+    driver: bridge
+volumes:
+  piper-models:
