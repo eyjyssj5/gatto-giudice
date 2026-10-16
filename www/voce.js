@@ -6,6 +6,14 @@
 (function(root) {
  "use strict";
  const PIPER_MODULE="https://esm.sh/@mintplex-labs/piper-tts-web@1.0.5?bundle";
+ // L'originaria URL cdnjs ONNX 1.18 non contiene ort-wasm-simd-threaded.mjs:
+ // era il 404 che rendeva Piper completamente muto.
+ // Il runtime WebAssembly viene caricato da un pacchetto npm pubblico completo.
+ const WASM_PATHS=Object.freeze({
+   onnxWasm:"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.1/dist/",
+   piperData:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.data",
+   piperWasm:"https://cdn.jsdelivr.net/npm/@diffusionstudio/piper-wasm@1.0.0/build/piper_phonemize.wasm"
+ });
  const LOCALES=Object.freeze({
    it:"it_IT",es:"es_ES",en:"en_US",pt:"pt_PT",fr:"fr_FR",de:"de_DE",
    nl:"nl_NL",pl:"pl_PL",ru:"ru_RU",tr:"tr_TR",ar:"ar_JO",zh:"zh_CN"
@@ -28,7 +36,7 @@
      });
    }
    const mod=await modulePromise;
-   if(typeof mod.predict!=="function" || typeof mod.voices!=="function")
+   if(typeof mod.TtsSession!=="function" || typeof mod.voices!=="function")
      throw Object.assign(new Error("La libreria vocale non è compatibile."),{code:"library"});
    return mod;
  }
@@ -117,15 +125,19 @@
      const tts=await getModule();
      resetSessionIfVoiceChanged(tts,voiceId);
      report("download");
-     const wav=await tts.predict({
-       text:String(text).trim().slice(0,240),
-       voiceId
-     }, (progress)=>{
-       if(selected?.id===id && progress?.total>0){
-         const percent=Math.min(100,Math.max(0,Math.round(progress.loaded/progress.total*100)));
-         report("download:"+percent);
+     // La funzione predict() generale usa un percorso ONNX rotto.
+     // Creando TtsSession direttamente indichiamo un URL WASM valido.
+     const session=new tts.TtsSession({
+       voiceId,
+       wasmPaths:WASM_PATHS,
+       progress:(progress)=>{
+         if(selected?.id===id && progress?.total>0){
+           const percent=Math.min(100,Math.max(0,Math.round(progress.loaded/progress.total*100)));
+           report("download:"+percent);
+         }
        }
      });
+     const wav=await session.predict(String(text).trim().slice(0,240));
      if(!selected || selected.id!==id)return false;
      if(!(wav instanceof Blob) || wav.size<44)
        throw Object.assign(new Error("La sintesi vocale non ha creato l'audio."),{code:"synthesis"});
@@ -167,7 +179,7 @@
      busy=false;
    }
  }
- const api={speak,stop,prepare,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,LOCALES,PRESETS};
+ const api={speak,stop,prepare,chooseVoice,normalizeLocale,resetSessionIfVoiceChanged,isBusy:()=>busy,WASM_PATHS,LOCALES,PRESETS};
  if(typeof module==="object" && module.exports)module.exports=api;
  else root.GattoVoce=api;
 })(typeof window!=="undefined"?window:globalThis);
