@@ -1,0 +1,30 @@
+name: Compila app iOS simulatore
+on:
+  workflow_dispatch:
+jobs:
+  ios-simulator:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepara il progetto nativo iOS
+        run: |
+          npm install --no-audit --no-fund
+          npx cap add ios
+          npx cap sync ios
+      - name: Compila per simulatore senza firma Apple
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath ios-build \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Crea archivio simulatore
+        run: cd ios-build/Build/Products/Debug-iphonesimulator && zip -r "$GITHUB_WORKSPACE/gatto-giudice-ios-simulator.zip" App.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gatto-giudice-ios-simulator
+          path: gatto-giudice-ios-simulator.zip
+          if-no-files-found: error
