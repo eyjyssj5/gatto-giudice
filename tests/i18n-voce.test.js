@@ -67,3 +67,21 @@ test("al cambio della lingua o del gatto la sessione singleton Piper viene ricre
   assert.equal(VOCE.resetSessionIfVoiceChanged(fake,"es_ES-davefx-medium"),true);
   assert.equal(fake.TtsSession._instance,null);
 });
+
+test("l'app sblocca l'audio iPhone al tocco e parla automaticamente dopo il verdetto",()=>{
+  const app=fs.readFileSync(path.join(__dirname,"../www/app.js"),"utf8");
+  const voice=fs.readFileSync(path.join(__dirname,"../www/voce.js"),"utf8");
+  assert.match(app,/GattoVoce\.prepare\(\)/);
+  assert.match(app,/pronuncia\(frase\);/);
+  assert.match(voice,/audioContext\.resume\(\)/);
+  assert.match(voice,/voiceStage:type/);
+});
+
+test("lo stato vocale e i messaggi di errore sono tradotti in 12 lingue",()=>{
+  for(const code of I18N.codes){
+    for(const key of ["voicePreparing","voiceDownloading","voicePlayback","voiceSpeaking","voiceTapToListen","voiceRetry","voiceFirstDownload"]) {
+      assert.ok(I18N.MESSAGES[code][key] && I18N.MESSAGES[code][key].length>10,code+"/"+key);
+    }
+    assert.ok(I18N.text(code,"voiceDownloading",{n:48}).includes("48"),code);
+  }
+});
