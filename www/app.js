@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
 
   // Dopo la pubblicazione del Cloudflare Worker, incolla qui il suo indirizzo workers.dev.
-  const SERVER = "INSERISCI_URL_DEL_WORKER";
+  const SERVER = "https://gatto-giudice-ai.eyjyssj.workers.dev";
   const SERVER_ATTIVO = !SERVER.startsWith("INSERISCI");
   const CHIAVE = "gatto.stato";
   const LIMITE = 10;
