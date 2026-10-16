@@ -81,7 +81,7 @@ export default {
     const origin = request.headers.get("Origin");
 
     if (request.method === "OPTIONS") {
-      if (!ORIGINS.has(origin) || pathname !== "/giudica") return json({ errore: "Origine non autorizzata." }, 403, origin);
+      if (!ORIGINS.has(origin) || !["/giudica","/voce"].includes(pathname)) return json({ errore: "Origine non autorizzata." }, 403, origin);
       return new Response(null, {
         status: 204,
         headers: {
@@ -92,6 +92,58 @@ export default {
           "Vary": "Origin",
         },
       });
+    }
+
+    // Audio TTS generato sul computer proprietario, dietro Cloudflare Tunnel.
+    // I token e l'indirizzo privato rimangono solo tra Worker e server locale.
+    if(pathname === "/voce" && request.method === "POST") {
+      if(!ORIGINS.has(origin))return json({errore:"Origine non autorizzata."},403,origin);
+      if(!env.TTS_URL || !env.TTS_SECRET) {
+        return json({errore:"Le voci libere non sono ancora collegate al server."},503,origin);
+      }
+      let input;
+      try {input=await request.json();}catch(_err){return json({errore:"JSON non valido."},400,origin);}
+      const text=typeof input?.text==="string"?input.text.trim():"";
+      const lang=input?.lang;
+      const character=input?.character;
+      const device=input?.device;
+      if(!text || text.length>260 || !Object.hasOwn(LINGUE,lang) ||
+         !CARATTERI.has(character) || typeof device!=="string" ||
+         !/^[a-zA-Z0-9-]{8,100}$/.test(device)) {
+         return json({errore:"Testo, lingua, gatto o dispositivo non valido."},400,origin);
+      }
+      if(!env.LIMITER)return json({errore:"Limite richieste non configurato."},503,origin);
+      const rate=await env.LIMITER.limit({key:"voice-"+device});
+      if(!rate.success)return json({errore:"Troppe richieste vocali. Riprova tra un minuto."},429,origin);
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),20000);
+      try {
+        const upstream=await fetch(env.TTS_URL,{
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer "+env.TTS_SECRET
+          },
+          body:JSON.stringify({text,lang,character}),
+          signal:controller.signal
+        });
+        if(!upstream.ok || !upstream.headers.get("Content-Type")?.includes("audio/wav")){
+          return json({errore:"Il motore vocale gratuito non e' pronto. Riprova tra poco."},503,origin);
+        }
+        const audio=await upstream.arrayBuffer();
+        if(audio.byteLength<100 || audio.byteLength>5_000_000){
+          return json({errore:"Audio non valido."},502,origin);
+        }
+        return new Response(audio,{status:200,headers:{
+          "Content-Type":"audio/wav",
+          "Cache-Control":"no-store",
+          "Access-Control-Allow-Origin":origin,
+          "X-Content-Type-Options":"nosniff",
+          "Vary":"Origin"
+        }});
+      }catch(_err){
+        return json({errore:"Motore vocale non raggiungibile. Verifica che il computer sia acceso."},503,origin);
+      }finally {clearTimeout(timeout);}
     }
 
     if (pathname !== "/giudica" || request.method !== "POST") {
