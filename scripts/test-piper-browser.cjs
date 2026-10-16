@@ -34,7 +34,8 @@ const puppeteer=require("puppeteer-core");
     await page.$eval("#decisione",e=>e.value="Voglio studiare oggi");
     await page.click("#btn-giudica");
     await page.waitForFunction(()=>document.getElementById("esito")?.hidden===false);
-    console.log("Verdetto arrivato; sintesi vocale in corso.");
+    console.log("Verdetto arrivato; avvio Piper manualmente nel browser desktop.");
+    await page.click("#btn-voce");
     const start=Date.now();
     let last="";
     while(Date.now()-start<185000){
