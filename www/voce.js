@@ -16,7 +16,7 @@
    ironico:{rate:1.07}   // leggermente vivace
  });
  let modulePromise=null;
- let audio=null, activeUrl=null, busy=false, selected=null;
+ let audio=null, activeUrl=null, audioContext=null, sourceNode=null, busy=false, selected=null;
  const voiceByLocale=new Map();
 
  async function getModule() {
@@ -54,6 +54,7 @@
    return chosen;
  }
  function stop() {
+   if(sourceNode) { sourceNode.onended=null;try{sourceNode.stop();}catch(_err){};sourceNode.disconnect();sourceNode=null; }
    if(audio){audio.pause();audio.onended=null;audio.onerror=null;audio=null;}
    if(activeUrl){URL.revokeObjectURL(activeUrl);activeUrl=null;}
    if(selected && selected.onEnd)selected.onEnd();
@@ -63,6 +64,11 @@
    if(busy)return false;
    stop();
    busy=true;
+   // Apriamo il dispositivo audio SUBITO, nel gesto dell'utente:
+   // iOS puo' bloccare un play() avviato dopo un download asincrono.
+   const Context=root.AudioContext||root.webkitAudioContext;
+   if(Context && !audioContext)audioContext=new Context();
+   if(audioContext && audioContext.state==="suspended")audioContext.resume().catch(()=>{});
    const id=Symbol("voce");
    selected={id,onEnd:hooks.onEnd};
    try {
@@ -73,17 +79,29 @@
      const wav=await tts.predict({text:String(text).slice(0,240),voiceId});
      if(!selected || selected.id!==id)return false;
      if(!(wav instanceof Blob))throw new Error("Piper non ha restituito un audio");
-     activeUrl=URL.createObjectURL(wav);
-     audio=new Audio(activeUrl);
-     audio.preload="auto";
-     audio.preservesPitch=false;
-     audio.mozPreservesPitch=false;
-     audio.webkitPreservesPitch=false;
-     audio.playbackRate=PRESETS[character]?.rate||1;
-     audio.onended=()=>{if(selected?.id===id)stop();};
-     audio.onerror=()=>{if(selected?.id===id)stop();hooks.onError?.();};
-     // Safari puo' richiedere un altro tocco: manteniamo l'audio pronto.
-     await audio.play();
+     if(audioContext) {
+       const bytes=await wav.arrayBuffer();
+       const buffer=await audioContext.decodeAudioData(bytes.slice(0));
+       if(!selected || selected.id!==id)return false;
+       const source=audioContext.createBufferSource();
+       source.buffer=buffer;
+       source.playbackRate.value=PRESETS[character]?.rate||1;
+       source.connect(audioContext.destination);
+       source.onended=()=>{if(selected?.id===id)stop();};
+       sourceNode=source;
+       await audioContext.resume();
+       source.start();
+     } else {
+       // Fallback audio HTML5, senza usare la voce del sistema operativo.
+       activeUrl=URL.createObjectURL(wav);
+       audio=new Audio(activeUrl);
+       audio.preservesPitch=false;
+       audio.webkitPreservesPitch=false;
+       audio.playbackRate=PRESETS[character]?.rate||1;
+       audio.onended=()=>{if(selected?.id===id)stop();};
+       audio.onerror=()=>{if(selected?.id===id)stop();hooks.onError?.();};
+       await audio.play();
+     }
      hooks.onStart?.();
      return true;
    } catch(error) {
