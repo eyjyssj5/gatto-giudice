@@ -18,7 +18,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # Il runner ubuntu-latest ha già Android SDK: evitiamo setup-android
+      # che tenta di installare un pacchetto 'tools' ormai rimosso.
+      - name: Verifica SDK Android esistente
+        run: |
+          echo "SDK: $ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" | tail -5
       - name: Dipendenze Capacitor
         run: npm install --no-audit --no-fund
       - name: Genera shell Android e copia i file web
