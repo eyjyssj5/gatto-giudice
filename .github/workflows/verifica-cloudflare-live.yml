@@ -1,0 +1,46 @@
+name: Verifica pubblica Cloudflare AI
+on:
+  push:
+    branches: [main]
+    paths: ['www/app.js', 'worker/index.mjs', 'wrangler.toml', '.github/workflows/verifica-cloudflare-live.yml']
+  workflow_dispatch:
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verifica una sentenza AI reale
+        run: |
+          node --input-type=module <<'NODE'
+          const url = "https://gatto-giudice-ai.eyjyssj.workers.dev/giudica";
+          const payload = {
+            decisione: "Ho deciso di studiare per un esame",
+            carattere: "dolce",
+            dispositivo: "smoke-ci-20261016-gatto"
+          };
+          for (let tentativo = 1; tentativo <= 5; tentativo++) {
+            try {
+              const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                  "Origin": "https://eyjyssj5.github.io",
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(12000)
+              });
+              const body = await response.text();
+              console.log("Tentativo", tentativo, "HTTP", response.status, body.slice(0,450));
+              if (response.ok) {
+                const result = JSON.parse(body);
+                if (typeof result.approva === "boolean" && typeof result.frase === "string" && result.frase.length) {
+                  console.log("OK: il Gatto Giudice ha risposto con AI");
+                  process.exit(0);
+                }
+              }
+            } catch (e) {
+              console.log("Tentativo", tentativo, e.message);
+            }
+            if (tentativo !== 5) await new Promise(r=>setTimeout(r,10000));
+          }
+          throw new Error("Il Worker non ha restituito una sentenza AI valida: verifica il binding AI, il rate limit e il dominio workers.dev");
+          NODE
