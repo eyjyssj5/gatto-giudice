@@ -1,7 +1,7 @@
 name: Compila APK Android di prova
 on:
   push:
-    branches: [main]
+    branches: [v10-microfono-nativo]
     paths:
       - ".github/workflows/build-android.yml"
       - "www/**"
