@@ -36,16 +36,16 @@ jobs:
       - name: Firma Google Play AAB
         working-directory: app-source
         env:
-          UPLOAD_KEYSTORE_B64: ${{ secrets.GATTO_UPLOAD_KEYSTORE_B64 }}
-          UPLOAD_STORE_PASSWORD: ${{ secrets.GATTO_UPLOAD_STORE_PASSWORD }}
-          UPLOAD_KEY_PASSWORD: ${{ secrets.GATTO_UPLOAD_KEY_PASSWORD }}
-          UPLOAD_ALIAS: ${{ secrets.GATTO_UPLOAD_ALIAS }}
+          UPLOAD_KEYSTORE_B64: ${{ secrets.SIGNKEY }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.STOREPASS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.KEYPASS }}
+          UPLOAD_ALIAS: ${{ secrets.KEYALIAS }}
         run: |
           set -euo pipefail
-          : "${UPLOAD_KEYSTORE_B64:?Missing GATTO_UPLOAD_KEYSTORE_B64}"
-          : "${UPLOAD_STORE_PASSWORD:?Missing GATTO_UPLOAD_STORE_PASSWORD}"
-          : "${UPLOAD_KEY_PASSWORD:?Missing GATTO_UPLOAD_KEY_PASSWORD}"
-          : "${UPLOAD_ALIAS:?Missing GATTO_UPLOAD_ALIAS}"
+          : "${UPLOAD_KEYSTORE_B64:?Missing SIGNKEY}"
+          : "${UPLOAD_STORE_PASSWORD:?Missing STOREPASS}"
+          : "${UPLOAD_KEY_PASSWORD:?Missing KEYPASS}"
+          : "${UPLOAD_ALIAS:?Missing KEYALIAS}"
           printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gatto-upload.jks"
           jarsigner -keystore "$RUNNER_TEMP/gatto-upload.jks" -storepass "$UPLOAD_STORE_PASSWORD" -keypass "$UPLOAD_KEY_PASSWORD" -sigalg SHA256withRSA -digestalg SHA-256 -signedjar GattoGiudice_V16_Play_Firmato.aab android/app/build/outputs/bundle/release/app-release.aab "$UPLOAD_ALIAS"
           jarsigner -verify GattoGiudice_V16_Play_Firmato.aab
