@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [play-commercial-v16]
-    paths: [GattoGiudice_V16_PLAY_COMMERCIALE_SORGENTE_E_BUILD.zip]
+    paths: [GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip]
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,9 +12,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Estrai sorgente definitivo V16
         run: |
-          test -f GattoGiudice_V16_PLAY_COMMERCIALE_SORGENTE_E_BUILD.zip
+          test -f GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip
           mkdir app-source
-          unzip -q GattoGiudice_V16_PLAY_COMMERCIALE_SORGENTE_E_BUILD.zip -d app-source
+          unzip -q GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
