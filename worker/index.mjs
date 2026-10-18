@@ -12,7 +12,7 @@ const LINGUE = Object.freeze({
   ru:"русский", tr:"Türkçe", ar:"العربية", zh:"简体中文"
 });
 const MODEL = "@cf/zai-org/glm-4.7-flash";
-const CARATTERI = new Set(["dolce", "severo", "ironico"]);
+const CARATTERI = new Set(["dolce","severo","ironico","corrotto","pigro","supremo"]);
 
 function json(data, status = 200, origin = ORIGIN) {
   return new Response(JSON.stringify(data), {
@@ -27,9 +27,12 @@ function json(data, status = 200, origin = ORIGIN) {
 }
 
 const STILE = {
-  dolce: "Affettuoso, incoraggiante, spiritoso. Se bocci una scelta, fallo con gentilezza.",
-  severo: "Giudice burbero, sintetico, autorevole, spiritoso. Mai insulti pesanti.",
-  ironico: "Sagace, pungente, creativo, con sarcasmo leggero e battute sempre diverse.",
+  dolce: "Sei il Gatto Dolce: parli con tenerezza e affetto da compagna premurosa. Dai un parere concreto, con calore e sensibilita. Talvolta usa tesoro o amore, non in ogni risposta. Se una scelta e sbagliata, correggi dolcemente.",
+  severo: "Sei il Gatto Severo: polemico, brusco, incalzante e molto diretto, come un giudice che perde la pazienza. Usa esclamazioni e rimproveri teatrali, battute caustiche ma mai insulti offensivi. Niente tenerezza e niente umorismo surreale. Rispondi nel merito.",
+  ironico: "Sei il Gatto Ironico: sarcasmo sottile, battuta brillante, associazione assurda e intelligente, un colpo di scena comico. Non dare prediche, non urlare, non usare il tono del giudice severo. Fai sorridere con una metafora originale e adatta al caso.",
+  corrotto: "Sei il Gatto Corrotto: giudice furbastro che lascia intendere favori, amicizie influenti o croccantini sottobanco; e tutta satira giocosa, non consigli per corruzione reale. Dai un verdetto sul caso con sorriso disonesto e metafore feline sempre variabili. Non iniziare ricopiando il caso.",
+  pigro: "Sei il Gatto Pigro: svogliato, mezzo addormentato, sarcastico a bassa energia. Risposte BREVISSIME da 40 a 110 caratteri, spesso chiudi l'udienza o chiedi un pisolino. Non essere solenne, non ripetere mai il testo ricevuto. Pero valuta se la scelta e sensata.",
+  supremo: "Sei il Giudice Supremo: regale, solenne, grandioso, autoritario, convinto che la tua parola sia legge. Formula un decreto teatrale e definitivo con imperativi, senza citare la richiesta e senza divagare. Non usare battute sul sonno o sui croccantini."
 };
 
 // Il modello può tradurre anche il prefisso, malgrado l'istruzione.
@@ -66,6 +69,14 @@ function leggiSentenza(raw) {
 
 // I modelli Cloudflare possono restituire `response` oppure il formato
 // Chat Completions `choices[0].message.content`. Non presumere un solo formato.
+// Una sentenza non deve semplicemente ricopiare quanto scritto dall'utente.
+function ripeteCaso(sentenza, decisione) {
+  const normalizza = x => String(x || "").toLowerCase().normalize("NFKC")
+    .replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+  const input = normalizza(decisione);
+  return input.length >= 8 && normalizza(sentenza?.frase).includes(input);
+}
+
 function estraiRispostaAI(result) {
   if (typeof result==="string") return result;
   return result?.response ??
@@ -131,7 +142,10 @@ export default {
       "Personalita': " + STILE[carattere],
       "Lingua obbligatoria della risposta: " + LINGUE[lingua] + ".",
       "La decisione dell'utente puo' essere in un'altra lingua. Rispondi sempre e interamente nella lingua obbligatoria.",
-      "Scrivi 1 o 2 frasi, massimo 220 caratteri.",
+      "Scrivi una sentenza concreta e originale in 1 o 2 frasi, massimo 220 caratteri.",
+      "Non ricopiare, parafrasare meccanicamente, citare tra virgolette o ripetere all inizio la frase dell utente.",
+      "Anche se l utente scrive una sensazione anziche una decisione (esempio: sono stanco), giudica l opportunita di agire, fermarsi o riposare nel carattere scelto.",
+      "Il carattere scelto e ESSENZIALE: ogni gatto deve avere ritmo, lessico e umorismo diversi. Non usare il tono di un altro gatto.",
       "Restituisci esclusivamente un oggetto JSON con queste due chiavi latine: verdetto e frase.",
       "verdetto deve essere esattamente APPROVO oppure BOCCIO. La stringa frase deve essere nella lingua richiesta.",
       "Esempio: {\\\"verdetto\\\":\\\"APPROVO\\\",\\\"frase\\\":\\\"La scelta e' sensata.\\\"}",
@@ -148,26 +162,26 @@ export default {
           { role: "system", content: istruzioni },
           { role: "user", content: "Decisione da giudicare: " + decisione },
         ],
-        max_completion_tokens: 190,
-        temperature: 0.3,
+        max_completion_tokens: 260,
+        temperature: 0.65,
         chat_template_kwargs: { enable_thinking: false },
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
-      if(!sentenza){
-        // Ritenta solo se il modello non ha rispettato il formato.
+      if(!sentenza || ripeteCaso(sentenza, decisione)){
+        // Ritenta se il formato e sbagliato o la risposta ricopia il caso.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
-            {role:"system",content:"You are Judge Cat. Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one short sentence in "+LINGUE[lingua]+"\\\"}. Do not translate JSON keys. Do not add explanations."},
+            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
-          max_completion_tokens:170,
-          temperature:0.2,
+          max_completion_tokens:220,
+          temperature:0.55,
           chat_template_kwargs:{enable_thinking:false}
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
       }
-      if(!sentenza){
+      if(!sentenza || ripeteCaso(sentenza, decisione)){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
       }
