@@ -13,15 +13,6 @@ const LINGUE = Object.freeze({
 });
 const MODEL = "@cf/zai-org/glm-4.7-flash";
 
-// Modalita' Gatto Severo: boccia circa 85% dei casi di intrattenimento.
-// La decisione e' stabile per lo stesso testo (anche dopo aver riaperto l'app).
-function verdettoSevero(testo) {
-  const t=String(testo).toLocaleLowerCase("it").normalize("NFKC").trim();
-  let h=2166136261;
-  for(const ch of t){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}
-  return ((h>>>0)%100)<85 ? "BOCCIO" : "APPROVO";
-}
-
 const CARATTERI = new Set(["dolce","severo","ironico","corrotto","pigro","supremo"]);
 
 function json(data, status = 200, origin = ORIGIN) {
@@ -38,7 +29,7 @@ function json(data, status = 200, origin = ORIGIN) {
 
 const STILE = {
   dolce: "Sei il Gatto Dolce: parli con tenerezza e affetto da compagna premurosa. Dai un parere concreto, con calore e sensibilita. Talvolta usa tesoro o amore, non in ogni risposta. Se una scelta e sbagliata, correggi dolcemente.",
-  severo: "Sei il Gatto Severo: polemico, brusco, incalzante e molto diretto, come un giudice che perde la pazienza. Usa esclamazioni e rimproveri teatrali, battute caustiche ma mai insulti offensivi. Niente tenerezza e niente umorismo surreale. Rispondi nel merito.",
+  severo: "Sei il Gatto Severo: giudice scontroso, tagliente, colto, impaziente e teatrale. Valuta davvero l azione: quando ha senso APPROVALA senza diventare dolce, usando una frase dura e inconfondibile, magari una reprimenda per l ovvieta; quando e sciocca BOCCIALA in modo polemico e brillante. Non attaccare la persona, non assomigliare all Ironico e non approvare automaticamente.",
   ironico: "Sei il Gatto Ironico: sarcasmo sottile, battuta brillante, associazione assurda e intelligente, un colpo di scena comico. Non dare prediche, non urlare, non usare il tono del giudice severo. Fai sorridere con una metafora originale e adatta al caso.",
   corrotto: "Sei il Gatto Corrotto: giudice furbastro che lascia intendere favori, amicizie influenti o croccantini sottobanco; e tutta satira giocosa, non consigli per corruzione reale. Dai un verdetto sul caso con sorriso disonesto e metafore feline sempre variabili. Non iniziare ricopiando il caso.",
   pigro: "Sei il Gatto Pigro: svogliato, mezzo addormentato, sarcastico a bassa energia. Risposte BREVISSIME da 40 a 110 caratteri, spesso chiudi l'udienza o chiedi un pisolino. Non essere solenne, non ripetere mai il testo ricevuto. Pero valuta se la scelta e sensata.",
@@ -146,10 +137,7 @@ export default {
     const { success } = await env.LIMITER.limit({ key: dispositivo });
     if (!success) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
 
-    const esitoVincolato = carattere==="severo" ? verdettoSevero(decisione) : null;
-    const regolaVerdetto = esitoVincolato
-      ? "Per questo caso il tuo verdetto deve essere esattamente "+esitoVincolato+". Rispondi come giudice severo, valutando davvero il caso; nel dubbio sii esigente. Se bocci la stanchezza, critica il fatto di chiedere un verdetto per una sensazione, non la persona stanca."
-      : "Valuta il caso autonomamente in base al suo contenuto, scegliendo approvazione o bocciatura come farebbe il tuo specifico personaggio.";
+    const regolaVerdetto = "Approva una decisione sensata e boccia una decisione sbagliata: il carattere cambia COME esprimi il giudizio, non obbliga a bocciare. In caso di stanchezza, il riposo e ragionevole; un severo puo approvarlo rimproverando con humour la persona per aver chiesto il permesso al tribunale, senza giudicarla come persona. Rispondi direttamente e nel merito.";
 
     const istruzioni = [
       "Sei IL GATTO GIUDICE, un gatto magistrato in un'app di intrattenimento.",
@@ -184,7 +172,7 @@ export default {
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
-      if(!sentenza || ripeteCaso(sentenza, decisione) || (esitoVincolato && sentenza.approva !== (esitoVincolato==="APPROVO"))){
+      if(!sentenza || ripeteCaso(sentenza, decisione)){
         // Ritenta se il formato e sbagliato o la risposta ricopia il caso.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
@@ -197,7 +185,7 @@ export default {
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
       }
-      if(!sentenza || ripeteCaso(sentenza, decisione) || (esitoVincolato && sentenza.approva !== (esitoVincolato==="APPROVO"))){
+      if(!sentenza || ripeteCaso(sentenza, decisione)){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
       }
