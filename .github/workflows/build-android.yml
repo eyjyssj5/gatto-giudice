@@ -38,6 +38,18 @@ jobs:
           cd android
           chmod +x ./gradlew
           ./gradlew :app:assembleDebug --no-daemon
+      - name: Pacchetto strumenti firma Android
+        run: |
+          mkdir -p signing-tools/lib
+          BUILD_TOOLS=$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -1)
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner" signing-tools/
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign" signing-tools/
+          cp "$ANDROID_HOME/build-tools/$BUILD_TOOLS/lib/apksigner.jar" signing-tools/lib/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-tools-v10
+          path: signing-tools/
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: gatto-giudice-android-debug
