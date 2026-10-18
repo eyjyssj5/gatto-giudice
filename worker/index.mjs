@@ -26,6 +26,16 @@ function json(data, status = 200, origin = ORIGIN) {
   });
 }
 
+const INDIRIZZO = {
+  dolce: "Tendi ad APPROVARE scelte sane e prudenti. Se e stanco, invitalo a riposare. Se rischia danni, correggi con affetto.",
+  severo: "BOCCIA nella maggioranza dei casi: lamentele, indecisione, pigrizia immotivata, scelte vaghe e scuse non bastano. APPROVA solo decisioni concrete, responsabili e veramente meritevoli. Una semplice lamentela merita BOCCIO.",
+  ironico: "Non approvare in automatico. Valuta con una battuta inattesa: BOCCIA scuse e idee assurde, APPROVA scelte intelligenti, senza imitare Severo.",
+  corrotto: "Il verdetto e opportunista, alludi a croccantini e favori in chiave comica senza suggerire reati reali. Usa ironia da imbroglione.",
+  pigro: "APPROVA il riposo sensato, BOCCIA piani faticosi e complicati a meno che siano davvero necessari. Rispondi in pochissime parole.",
+  supremo: "BOCCIA dichiarazioni vaghe e scelte irragionevoli; APPROVA solo decisioni dignitose e concrete, con tono solenne e definitivo."
+};
+const STANCHEZZA = /^(?:sono stanc[oaie]|mi sento stanc[oaie]|i(?:'| a)m tired|i feel tired|estoy cansad[oa]|me siento cansad[oa]|je suis fatigu[eé]e?|ich bin m[üu]de|estou cansad[oa]|ik ben moe|jestem zm[eę]czon[ay]|я устал[а]?|yorgunum|أنا متعب|我累了)[.!? ]*$/iu;
+const PER_STANCHEZZA = {dolce:true,severo:false,ironico:false,corrotto:true,pigro:true,supremo:false};
 const STILE = {
   dolce: "Sei il Gatto Dolce: parli con tenerezza e affetto da compagna premurosa. Dai un parere concreto, con calore e sensibilita. Talvolta usa tesoro o amore, non in ogni risposta. Se una scelta e sbagliata, correggi dolcemente.",
   severo: "Sei il Gatto Severo: polemico, brusco, incalzante e molto diretto, come un giudice che perde la pazienza. Usa esclamazioni e rimproveri teatrali, battute caustiche ma mai insulti offensivi. Niente tenerezza e niente umorismo surreale. Rispondi nel merito.",
@@ -136,10 +146,18 @@ export default {
     const { success } = await env.LIMITER.limit({ key: dispositivo });
     if (!success) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
 
+    const verdettoGuidato = STANCHEZZA.test(decisione) ? PER_STANCHEZZA[carattere] : null;
+    const regolaStanchezza = verdettoGuidato === null ? "" :
+      ("Questo testo e uno stato d'animo: per la tua personalita il verdetto DEVE essere "
+      + (verdettoGuidato ? "APPROVO" : "BOCCIO")
+      + ". Valuta se ha bisogno di riposo o deve prendere una decisione concreta. Non ripetere il testo.");
     const istruzioni = [
       "Sei IL GATTO GIUDICE, un gatto magistrato in un'app di intrattenimento.",
       "Giudica DAVVERO il contenuto della decisione. Rispondi nel merito, non con frasi generiche.",
       "Personalita': " + STILE[carattere],
+      "Criterio del verdetto: " + INDIRIZZO[carattere],
+      "Non essere accomodante automaticamente: non approvare tutte le richieste.",
+      regolaStanchezza,
       "Lingua obbligatoria della risposta: " + LINGUE[lingua] + ".",
       "La decisione dell'utente puo' essere in un'altra lingua. Rispondi sempre e interamente nella lingua obbligatoria.",
       "Scrivi una sentenza concreta e originale in 1 o 2 frasi, massimo 220 caratteri.",
@@ -168,11 +186,11 @@ export default {
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
-      if(!sentenza || ripeteCaso(sentenza, decisione)){
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (verdettoGuidato !== null && sentenza.approva !== verdettoGuidato)){
         // Ritenta se il formato e sbagliato o la risposta ricopia il caso.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
-            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
+            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". Judging approach: "+INDIRIZZO[carattere]+". "+regolaStanchezza+" Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
           max_completion_tokens:220,
@@ -181,11 +199,11 @@ export default {
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
       }
-      if(!sentenza || ripeteCaso(sentenza, decisione)){
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (verdettoGuidato !== null && sentenza.approva !== verdettoGuidato)){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
       }
-      return json({...sentenza,lingua},200,origin);
+      return json({...sentenza,lingua,carattere},200,origin);
     } catch (errore) {
       console.error("Errore Workers AI:", errore?.message || "sconosciuto");
       return json({ errore: "Il tribunale AI non e' disponibile. Riprova." }, 503);
