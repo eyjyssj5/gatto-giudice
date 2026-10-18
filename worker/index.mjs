@@ -12,6 +12,16 @@ const LINGUE = Object.freeze({
   ru:"русский", tr:"Türkçe", ar:"العربية", zh:"简体中文"
 });
 const MODEL = "@cf/zai-org/glm-4.7-flash";
+
+// Modalita' Gatto Severo: boccia circa 85% dei casi di intrattenimento.
+// La decisione e' stabile per lo stesso testo (anche dopo aver riaperto l'app).
+function verdettoSevero(testo) {
+  const t=String(testo).toLocaleLowerCase("it").normalize("NFKC").trim();
+  let h=2166136261;
+  for(const ch of t){h^=ch.codePointAt(0);h=Math.imul(h,16777619);}
+  return ((h>>>0)%100)<85 ? "BOCCIO" : "APPROVO";
+}
+
 const CARATTERI = new Set(["dolce","severo","ironico","corrotto","pigro","supremo"]);
 
 function json(data, status = 200, origin = ORIGIN) {
@@ -136,10 +146,16 @@ export default {
     const { success } = await env.LIMITER.limit({ key: dispositivo });
     if (!success) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
 
+    const esitoVincolato = carattere==="severo" ? verdettoSevero(decisione) : null;
+    const regolaVerdetto = esitoVincolato
+      ? "Per questo caso il tuo verdetto deve essere esattamente "+esitoVincolato+". Rispondi come giudice severo, valutando davvero il caso; nel dubbio sii esigente. Se bocci la stanchezza, critica il fatto di chiedere un verdetto per una sensazione, non la persona stanca."
+      : "Valuta il caso autonomamente in base al suo contenuto, scegliendo approvazione o bocciatura come farebbe il tuo specifico personaggio.";
+
     const istruzioni = [
       "Sei IL GATTO GIUDICE, un gatto magistrato in un'app di intrattenimento.",
       "Giudica DAVVERO il contenuto della decisione. Rispondi nel merito, non con frasi generiche.",
       "Personalita': " + STILE[carattere],
+      regolaVerdetto,
       "Lingua obbligatoria della risposta: " + LINGUE[lingua] + ".",
       "La decisione dell'utente puo' essere in un'altra lingua. Rispondi sempre e interamente nella lingua obbligatoria.",
       "Scrivi una sentenza concreta e originale in 1 o 2 frasi, massimo 220 caratteri.",
@@ -168,11 +184,11 @@ export default {
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
-      if(!sentenza || ripeteCaso(sentenza, decisione)){
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (esitoVincolato && sentenza.approva !== (esitoVincolato==="APPROVO"))){
         // Ritenta se il formato e sbagliato o la risposta ricopia il caso.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
-            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
+            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". "+regolaVerdetto+". Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
           max_completion_tokens:220,
@@ -181,7 +197,7 @@ export default {
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
       }
-      if(!sentenza || ripeteCaso(sentenza, decisione)){
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (esitoVincolato && sentenza.approva !== (esitoVincolato==="APPROVO"))){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
       }
