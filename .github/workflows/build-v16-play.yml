@@ -1,9 +1,6 @@
 name: Gatto Giudice V16 - Build AAB da ZIP
 on:
   workflow_dispatch:
-  push:
-    branches: [play-commercial-v16]
-    paths: [GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip]
 jobs:
   build:
     runs-on: ubuntu-latest
