@@ -36,6 +36,9 @@ jobs:
           npx cap add android
           npx cap sync android
           bash scripts/prepare-android-play.sh
+          # Google Play Billing 8.3 richiede minSdkVersion >= 23.
+          sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*22/minSdkVersion = 23/' android/variables.gradle
+          grep 'minSdkVersion = 23' android/variables.gradle
           # Gradle vede mipmap-<density>-v4 e mipmap-<density> come risorse duplicate.
           # Mantieni le icone personalizzate, nella directory canonica generata da Capacitor.
           for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
