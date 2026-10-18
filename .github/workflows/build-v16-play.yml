@@ -36,6 +36,17 @@ jobs:
           npx cap add android
           npx cap sync android
           bash scripts/prepare-android-play.sh
+          # Gradle vede mipmap-<density>-v4 e mipmap-<density> come risorse duplicate.
+          # Mantieni le icone personalizzate, nella directory canonica generata da Capacitor.
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            source="android/app/src/main/res/mipmap-${density}-v4"
+            target="android/app/src/main/res/mipmap-${density}"
+            if [ -d "$source" ]; then
+              mkdir -p "$target"
+              cp -f "$source"/*.png "$target"/
+              rm -rf "$source"
+            fi
+          done
           cd android
           chmod +x gradlew
           ./gradlew :app:bundleRelease --no-daemon
