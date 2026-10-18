@@ -81,7 +81,7 @@ function ripeteCaso(sentenza, decisione) {
 function casoStanchezzaVago(testo) {
   const t=String(testo||"").toLowerCase().trim();
   if(t.length>95 || /\b(ho deciso|decido|voglio|devo|should|decided|voy a|je vais|ich werde|quero|will|going to)\b/u.test(t))return false;
-  return /\b(sono stanc[oaie]?|stanchissimo|i am tired|i'm tired|im tired|estoy cansad[oa]|estou cansad[oa]|je suis fatigu[eé]e?|ich bin m[uü]de|ik ben moe|jestem zm[eę]czon[ay]|yorgunum)\b|я устал|я устала|أنا متعب|أنا متعبة|我累了/u.test(t);
+  return /\b(sono stanc[oaie]?|stanchissimo|i am tired|i'm tired|im tired|estoy cansad[oa]|estou cansad[oa]|je suis fatigu[eé]e?|ich bin m[uü]de|ik ben moe|jestem zm[eę]czon[ay]|yorgunum)(?=$|\s|[,.!?])|я устал|я устала|أنا متعب|أنا متعبة|我累了/u.test(t);
 }
 const VERDETTI_STANCHEZZA = Object.freeze({dolce:true,severo:false,ironico:false,corrotto:true,pigro:true,supremo:false});
 
