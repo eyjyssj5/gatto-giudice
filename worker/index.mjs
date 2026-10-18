@@ -72,7 +72,7 @@ function leggiSentenza(raw) {
 // Una sentenza non deve semplicemente ricopiare quanto scritto dall'utente.
 function ripeteCaso(sentenza, decisione) {
   const normalizza = x => String(x || "").toLowerCase().normalize("NFKC")
-    .replace(/[^\\p{L}\\p{N}]+/gu, " ").trim();
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
   const input = normalizza(decisione);
   return input.length >= 8 && normalizza(sentenza?.frase).includes(input);
 }
