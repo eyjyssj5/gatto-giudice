@@ -12,7 +12,7 @@ const LINGUE = Object.freeze({
   ru:"русский", tr:"Türkçe", ar:"العربية", zh:"简体中文"
 });
 const MODEL = "@cf/zai-org/glm-4.7-flash";
-const CARATTERI = new Set(["dolce", "severo", "ironico"]);
+const CARATTERI = new Set(["dolce","severo","ironico","corrotto","pigro","supremo"]);
 
 function json(data, status = 200, origin = ORIGIN) {
   return new Response(JSON.stringify(data), {
@@ -27,10 +27,20 @@ function json(data, status = 200, origin = ORIGIN) {
 }
 
 const STILE = {
-  dolce: "Affettuoso, incoraggiante, spiritoso. Se bocci una scelta, fallo con gentilezza.",
-  severo: "Giudice burbero, sintetico, autorevole, spiritoso. Mai insulti pesanti.",
-  ironico: "Sagace, pungente, creativo, con sarcasmo leggero e battute sempre diverse.",
+  dolce: "Sei il Gatto Dolce: parli con tenerezza e affetto da compagna premurosa. Dai un parere concreto, con calore e sensibilita. Talvolta usa tesoro o amore, non in ogni risposta. Se una scelta e sbagliata, correggi dolcemente.",
+  severo: "Sei il Gatto Severo: incredibilmente esigente, polemico, brusco e incalzante. BOCCIA la maggior parte delle scelte mediocri, vaghe o pigre; APPROVA solo quelle veramente concrete e sensate. Critica con sarcasmo tagliente, esclamazioni teatrali e rimproveri, senza insultare la persona. Non sembrare il Gatto Dolce o il Gatto Ironico.",
+  ironico: "Sei il Gatto Ironico: ironia intelligente, paradossi e battute sorprendenti, mai sgridate o prediche. APPROVA e BOCCIA in base al senso della scelta, ma il tuo modo di dirlo deve SEMPRE essere una battuta originale e non un rimprovero. Evita termini e tono del Severo.",
+  corrotto: "Sei il Gatto Corrotto: opportunista, furbastro, satirico. Se la scelta non ti offre vantaggi inventa una scusa ridicola per BOCCIARE; se ottieni favori simbolici o croccantini la APPROVI. Corruzione esclusivamente fittizia e comica, mai istruzioni illegali. Ogni volta una nuova battuta, mai ricopiare il caso.",
+  pigro: "Sei il Gatto Pigro: svogliato, mezzo addormentato, sarcastico, una o due frasi BREVISSIME. Tendi ad APPROVARE il riposo e le scelte che richiedono poco sforzo; tendi a BOCCIARE gli impegni superflui. Chiudi spesso l'udienza per sonnecchiare, mai copiare la frase dell'utente.",
+  supremo: "Sei il Giudice Supremo: maestoso, severamente formale e teatrale. BOCCIA con grande solennita i casi vaghi e poco rispettosi del tuo tribunale, APPROVA le decisioni davvero autorevoli e ben motivate. Formula una sentenza in forma di decreto imperiale, senza ricopiare la richiesta. Non usare battute sul sonno o croccantini."
 };
+
+// Stati d'animo non sono decisioni. Ciascun giudice li interpreta diversamente
+// e in modo coerente, senza decidere casualmente a ogni ripetizione.
+const SEMPLICE_STANCHEZZA = /^(?:sono stanc[oaie]|mi sento stanc[oaie]|sono esaust[oaie]|sono sfin[ií]t[oaie]|estoy cansad[oa]|i(?: am|'m) tired|estou cansad[oa]|je suis fatigué[e]?|ich bin müde|ik ben moe|jestem zmęczon[ya]|я устал[а]?|çok yorgunum|أنا متعب[ة]?|我累了)[.!?\s]*$/iu;
+const SENTENZA_STANCHEZZA = Object.freeze({
+  dolce: true, severo: false, ironico: true, corrotto: false, pigro: true, supremo: false
+});
 
 // Il modello può tradurre anche il prefisso, malgrado l'istruzione.
 function leggiSentenza(raw) {
@@ -66,6 +76,14 @@ function leggiSentenza(raw) {
 
 // I modelli Cloudflare possono restituire `response` oppure il formato
 // Chat Completions `choices[0].message.content`. Non presumere un solo formato.
+// Una sentenza non deve semplicemente ricopiare quanto scritto dall'utente.
+function ripeteCaso(sentenza, decisione) {
+  const normalizza = x => String(x || "").toLowerCase().normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const input = normalizza(decisione);
+  return input.length >= 8 && normalizza(sentenza?.frase).includes(input);
+}
+
 function estraiRispostaAI(result) {
   if (typeof result==="string") return result;
   return result?.response ??
@@ -125,13 +143,26 @@ export default {
     const { success } = await env.LIMITER.limit({ key: dispositivo });
     if (!success) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
 
+    // Solo una dichiarazione vaga di stanchezza riceve un criterio fisso
+    // per ruolo. L'IA resta responsabile delle parole e delle altre decisioni.
+    const forzato = SEMPLICE_STANCHEZZA.test(decisione)
+      ? SENTENZA_STANCHEZZA[carattere] : null;
+    const obbligo = forzato===null ? "" : (
+      "Qui l'utente ha descritto stanchezza, non una decisione. Il tuo verdetto deve essere " +
+      (forzato ? "APPROVO" : "BOCCIO") +
+      ". Non contraddire questo verdetto nel testo; commenta il riposo o la chiarezza del caso nel TUO stile."
+    );
     const istruzioni = [
       "Sei IL GATTO GIUDICE, un gatto magistrato in un'app di intrattenimento.",
       "Giudica DAVVERO il contenuto della decisione. Rispondi nel merito, non con frasi generiche.",
       "Personalita': " + STILE[carattere],
+      obbligo,
       "Lingua obbligatoria della risposta: " + LINGUE[lingua] + ".",
       "La decisione dell'utente puo' essere in un'altra lingua. Rispondi sempre e interamente nella lingua obbligatoria.",
-      "Scrivi 1 o 2 frasi, massimo 220 caratteri.",
+      "Scrivi una sentenza concreta e originale in 1 o 2 frasi, massimo 220 caratteri.",
+      "Non ricopiare, parafrasare meccanicamente, citare tra virgolette o ripetere all inizio la frase dell utente.",
+      "Anche se l utente scrive una sensazione anziche una decisione (esempio: sono stanco), giudica l opportunita di agire, fermarsi o riposare nel carattere scelto.",
+      "Il carattere scelto e ESSENZIALE: ogni gatto deve avere ritmo, lessico e umorismo diversi. Non usare il tono di un altro gatto.",
       "Restituisci esclusivamente un oggetto JSON con queste due chiavi latine: verdetto e frase.",
       "verdetto deve essere esattamente APPROVO oppure BOCCIO. La stringa frase deve essere nella lingua richiesta.",
       "Esempio: {\\\"verdetto\\\":\\\"APPROVO\\\",\\\"frase\\\":\\\"La scelta e' sensata.\\\"}",
@@ -148,26 +179,26 @@ export default {
           { role: "system", content: istruzioni },
           { role: "user", content: "Decisione da giudicare: " + decisione },
         ],
-        max_completion_tokens: 190,
-        temperature: 0.3,
+        max_completion_tokens: 260,
+        temperature: 0.35,
         chat_template_kwargs: { enable_thinking: false },
       });
 
       let sentenza=leggiSentenza(estraiRispostaAI(risultato));
-      if(!sentenza){
-        // Ritenta solo se il modello non ha rispettato il formato.
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (forzato!==null && sentenza.approva!==forzato)){
+        // Ritenta se il formato e sbagliato o la risposta ricopia il caso.
         const ripetizione=await env.AI.run(MODEL,{
           messages:[
-            {role:"system",content:"You are Judge Cat. Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one short sentence in "+LINGUE[lingua]+"\\\"}. Do not translate JSON keys. Do not add explanations."},
+            {role:"system",content:"You are Judge Cat. Character: "+STILE[carattere]+". "+obbligo+" Reply with JSON ONLY: {\\\"verdetto\\\":\\\"APPROVO\\\" or \\\"BOCCIO\\\", \\\"frase\\\":\\\"one original brief verdict in "+LINGUE[lingua]+"\\\"}. Never quote or repeat the input. Do not translate JSON keys."},
             {role:"user",content:"Evaluate this decision: "+decisione}
           ],
-          max_completion_tokens:170,
-          temperature:0.2,
+          max_completion_tokens:220,
+          temperature:0.25,
           chat_template_kwargs:{enable_thinking:false}
         });
         sentenza=leggiSentenza(estraiRispostaAI(ripetizione));
       }
-      if(!sentenza){
+      if(!sentenza || ripeteCaso(sentenza, decisione) || (forzato!==null && sentenza.approva!==forzato)){
         console.warn("Risposta AI senza prefisso valido per lingua",lingua);
         return json({ errore: "Il gatto non ha pronunciato una sentenza valida. Riprova." },502,origin);
       }
