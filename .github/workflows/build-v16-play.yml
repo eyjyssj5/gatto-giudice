@@ -1,0 +1,58 @@
+name: Gatto Giudice V16 - Build AAB da ZIP
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Estrai sorgente definitivo V16
+        run: |
+          test -f GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip
+          mkdir app-source
+          unzip -q GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: SDK Android 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Installa, prepara, controlla e compila
+        working-directory: app-source
+        run: |
+          npm install --no-audit --no-fund
+          npm run build:play
+          npx cap add android
+          npx cap sync android
+          bash scripts/prepare-android-play.sh
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:bundleRelease --no-daemon
+      - name: Firma Google Play AAB
+        working-directory: app-source
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.GATTO_UPLOAD_KEYSTORE_B64 }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.GATTO_UPLOAD_STORE_PASSWORD }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.GATTO_UPLOAD_KEY_PASSWORD }}
+          UPLOAD_ALIAS: ${{ secrets.GATTO_UPLOAD_ALIAS }}
+        run: |
+          set -euo pipefail
+          : "${UPLOAD_KEYSTORE_B64:?Missing GATTO_UPLOAD_KEYSTORE_B64}"
+          : "${UPLOAD_STORE_PASSWORD:?Missing GATTO_UPLOAD_STORE_PASSWORD}"
+          : "${UPLOAD_KEY_PASSWORD:?Missing GATTO_UPLOAD_KEY_PASSWORD}"
+          : "${UPLOAD_ALIAS:?Missing GATTO_UPLOAD_ALIAS}"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gatto-upload.jks"
+          jarsigner -keystore "$RUNNER_TEMP/gatto-upload.jks" -storepass "$UPLOAD_STORE_PASSWORD" -keypass "$UPLOAD_KEY_PASSWORD" -sigalg SHA256withRSA -digestalg SHA-256 -signedjar GattoGiudice_V16_Play_Firmato.aab android/app/build/outputs/bundle/release/app-release.aab "$UPLOAD_ALIAS"
+          jarsigner -verify GattoGiudice_V16_Play_Firmato.aab
+          unzip -t GattoGiudice_V16_Play_Firmato.aab | tail -1
+          rm -f "$RUNNER_TEMP/gatto-upload.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GattoGiudice_V16_AAB_Play_Firmato
+          path: app-source/GattoGiudice_V16_Play_Firmato.aab
+          if-no-files-found: error
