@@ -19,9 +19,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: SDK Android 36
-        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: SDK Android 36 (SDK già presente sul runner Ubuntu)
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager --list_installed | grep -E '(platforms;android-36|build-tools;36.0.0)'
       - name: Installa, prepara, controlla e compila
         working-directory: app-source
         run: |
