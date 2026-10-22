@@ -13,10 +13,11 @@ section='''<section class="checkin-section" aria-labelledby="checkin-title">
 </section>
 '''
 h=h.replace('<section class="verdict-section"',section+'<section class="verdict-section"',1)
-h=h.replace('movimento-v17.css?v=17','movimento-v17.css?v=18')
+assert 'styles.css?v=play16' in h
+h=h.replace('<link rel="stylesheet" href="styles.css?v=play16">','<link rel="stylesheet" href="styles.css?v=play16">\n<link rel="stylesheet" href="movimento-v17.css?v=18">',1)
 h=h.replace('</head>','<link rel="stylesheet" href="checkin-v18.css?v=18">\n</head>',1)
 assert '<script src="premium-bundle.js?v=play16"></script>' in h
-h=h.replace('<script src="premium-bundle.js?v=play16"></script>','<script src="checkin-v18.js?v=18"></script>\n<script src="premium-bundle.js?v=play16"></script>',1)
+h=h.replace('<script src="premium-bundle.js?v=play16"></script>','<script src="movimento-v17.js?v=18"></script>\n<script src="checkin-v18.js?v=18"></script>\n<script src="premium-bundle.js?v=play16"></script>',1)
 assert '<script src="app.js?v=play16"></script>' in h
 h=h.replace('<script src="app.js?v=play16"></script>','<script src="app.js?v=18"></script>\n<script src="checkin-ui-v18.js?v=18"></script>',1)
 p.write_text(h)
