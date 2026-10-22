@@ -1,0 +1,10 @@
+.checkin-section{background:#fff7e6;color:#263938;padding:17px 22px;border-block:1px solid #dfc898}
+.checkin-section h2{font:700 17px Georgia,serif;margin:0 0 10px;color:#283b37}
+#checkin-total{font-size:13px;margin:5px 0}#checkin-progress{height:12px;width:100%;accent-color:#36846e}
+#checkin-button{width:100%;margin-top:12px;padding:12px;border:1px solid #14624c;background:#23674f;color:#fff;border-radius:10px;font-weight:700}
+#checkin-button:disabled{background:#e0e7df;color:#40584d;border-color:#8b9d91}
+#checkin-feedback{font-size:13px;font-weight:700;color:#24593d}#checkin-next,#checkin-storage-notice{font-size:12px;line-height:1.5}
+#checkin-milestones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0;list-style:none}
+#checkin-milestones li{padding:8px;border:1px solid #d4c6a6;border-radius:8px;background:#fff;font-size:12px}
+#checkin-milestones li.is-earned{background:#e3f4ea;border-color:#77ae89;color:#1c6240;font-weight:700}
+.checkin-unlock-hint{font-size:12px;line-height:1.4;color:#ffe0a4}
