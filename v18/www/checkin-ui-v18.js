@@ -13,7 +13,7 @@ $('checkin-title').textContent=t.title;
 $('checkin-total').textContent=fmt(t.days,{n:x.count,s:x.streak});
 $('checkin-progress').value=x.count;
 const b=$('checkin-button');b.disabled=x.checkedToday||x.unlocked===40;b.textContent=x.unlocked===40?t.finished:x.checkedToday?t.done:t.action;
-$('checkin-feedback').textContent=feedback||x.missed?t.reset:'';
+$('checkin-feedback').textContent=feedback||(x.missed?t.reset:'');
 $('checkin-next').textContent=x.next?fmt(t.next,{cat:names[x.next],n:C.REWARDS[x.next]}):t.finished;
 $('checkin-storage-notice').textContent=t.note;
 const list=$('checkin-milestones');list.replaceChildren();
