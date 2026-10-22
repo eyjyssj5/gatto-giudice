@@ -1,0 +1,23 @@
+/* V18: portrait motion noticeable but not exaggerated. Photos are unchanged. */
+.judge-card[data-position="center"] .judge-portrait{animation:none!important}
+.judge-portrait{overflow:hidden}
+.judge-portrait img{backface-visibility:hidden;transform-origin:center 44%;transform:translate3d(0,0,0)}
+.judge-card[data-position="center"] .judge-portrait img{animation:cat-dolce-v18 5s ease-in-out infinite!important;will-change:transform}
+.judge-card[data-position="center"][data-judge="dolce"] .judge-portrait img{animation-name:cat-dolce-v18!important}
+.judge-card[data-position="center"][data-judge="severo"] .judge-portrait img{animation-name:cat-severo-v18!important;animation-duration:5.8s!important}
+.judge-card[data-position="center"][data-judge="ironico"] .judge-portrait img{animation-name:cat-ironico-v18!important;animation-duration:4.6s!important}
+.judge-card[data-position="center"][data-judge="corrotto"] .judge-portrait img{animation-name:cat-corrotto-v18!important;animation-duration:5.4s!important}
+.judge-card[data-position="center"][data-judge="pigro"] .judge-portrait img{animation-name:cat-pigro-v18!important;animation-duration:6.5s!important}
+.judge-card[data-position="center"][data-judge="supremo"] .judge-portrait img{animation-name:cat-supremo-v18!important;animation-duration:5.9s!important}
+@keyframes cat-dolce-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}28%{transform:translate3d(2px,-5px,0) rotate(.9deg) scale(1.032)}55%{transform:translate3d(-3px,2px,0) rotate(-.7deg) scale(1.018)}78%{transform:translate3d(1px,-3px,0) rotate(.45deg) scale(1.027)}}
+@keyframes cat-severo-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}24%{transform:translate3d(-3px,-2px,0) rotate(-1deg) scale(1.021)}51%{transform:translate3d(2px,0,0) rotate(.6deg) scale(1.012)}74%{transform:translate3d(2px,-4px,0) rotate(.45deg) scale(1.027)}}
+@keyframes cat-ironico-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}22%{transform:translate3d(3px,-3px,0) rotate(1.25deg) scale(1.029)}49%{transform:translate3d(-2px,-5px,0) rotate(-.9deg) scale(1.018)}72%{transform:translate3d(2px,1px,0) rotate(.65deg) scale(1.031)}}
+@keyframes cat-corrotto-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}27%{transform:translate3d(-4px,-2px,0) rotate(-1deg) scale(1.025)}54%{transform:translate3d(1px,2px,0) rotate(.5deg) scale(1.018)}78%{transform:translate3d(-2px,-3px,0) rotate(-.55deg) scale(1.03)}}
+@keyframes cat-pigro-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}30%{transform:translate3d(1px,6px,0) rotate(.7deg) scale(1.019)}60%{transform:translate3d(-2px,-2px,0) rotate(-.55deg) scale(1.026)}80%{transform:translate3d(1px,3px,0) rotate(.3deg) scale(1.014)}}
+@keyframes cat-supremo-v18{0%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1.005)}31%{transform:translate3d(1px,-5px,0) rotate(.6deg) scale(1.028)}59%{transform:translate3d(-2px,-1px,0) rotate(-.7deg) scale(1.018)}77%{transform:translate3d(1px,-3px,0) rotate(.45deg) scale(1.026)}}
+.judge-card:not([data-position="center"]) .judge-portrait img{animation:none!important;will-change:auto}
+.judge-card.is-locked .judge-portrait:after{display:none!important}
+.judge-card .lock{top:auto!important;bottom:8px!important;right:8px!important;font-size:14px!important;width:26px!important;height:26px!important}
+.cat-preview-tip{max-width:460px;margin:4px auto 12px;padding:0 18px;font-size:12px;color:#f2d9a7}
+html[data-cat-motion="paused"] .judge-portrait img{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){.judge-card[data-position="center"] .judge-portrait img{animation:none!important;transform:none!important;will-change:auto}}
