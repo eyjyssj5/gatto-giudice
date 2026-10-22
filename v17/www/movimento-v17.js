@@ -1,0 +1,2 @@
+/* Il movimento e' sospeso quando Gatto Giudice non e' visibile. */
+(()=>{'use strict';const sync=()=>{document.documentElement.dataset.catMotion=document.hidden?'paused':'running';};document.addEventListener('visibilitychange',sync,{passive:true});sync();})();
