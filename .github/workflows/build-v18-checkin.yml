@@ -1,0 +1,118 @@
+name: Gatto Giudice V18 - APK e AAB check-in movimento
+on:
+  workflow_dispatch:
+  push:
+    branches: [gatto-v18-checkin-motion]
+    paths:
+      - 'v18/**'
+      - '.github/workflows/build-v18-checkin.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sorgente approvato
+        run: |
+          set -euo pipefail
+          mkdir app-source
+          unzip -q GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
+          test -f app-source/www/img/gatto-dolce-approvato.png
+          test -f app-source/www/img/gatto-ironico.png
+          test -f app-source/www/img/gatto-corrotto-approvato.png
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android API 36
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Test e compila APK AAB
+        run: |
+          set -euo pipefail
+          cd app-source
+          npm install --no-audit --no-fund
+          npm test
+          cd ..
+          python3 v18/patch-v18.py
+          cd app-source
+          node --check www/app.js
+          node --check www/checkin-v18.js
+          node --check www/checkin-ui-v18.js
+          node --check www/movimento-v17.js
+          node - <<'NODE'
+          const assert=require('node:assert/strict');
+          const C=require('./www/checkin-v18.js');
+          const memory=()=>{let m=new Map();return{getItem:k=>m.get(k)||null,setItem:(k,v)=>m.set(k,v)}};
+          const day=n=>new Date(Date.UTC(2026,0,n,12)).toISOString().slice(0,10);
+          let st=memory();
+          for(let i=1;i<=18;i++)C.checkIn(day(i),st);
+          assert.equal(C.owned('severo',st),true);
+          assert.equal(C.progress(day(18),st).streak,8);
+          assert.equal(C.progress(day(20),st).count,10);
+          assert.equal(C.checkIn(day(20),st).count,11);
+          assert.equal(C.owned('severo',st),true);
+          assert.equal(C.owned('supremo',st),false);
+          st=memory();
+          for(let i=1;i<=40;i++)C.checkIn(day(i),st);
+          for(let j of ['severo','ironico','corrotto','pigro'])assert.equal(C.owned(j,st),true);
+          assert.equal(C.owned('supremo',st),false);
+          console.log('PASS 18 -> missed 19 -> 10+1; four rewards; Supreme excluded');
+          NODE
+          grep -q 'cat-dolce-v18' www/movimento-v17.css
+          grep -q 'cat-preview-tip' www/index.html
+          grep -q 'GattoCheckin?.owned' www/app.js
+          npm run build:premium
+          npx cap add android
+          npx cap sync android
+          bash scripts/prepare-android-play.sh
+          sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*22/minSdkVersion = 24/' android/variables.gradle
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 5/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.0.4"/' android/app/build.gradle
+          grep 'minSdkVersion = 24' android/variables.gradle
+          grep 'versionCode 5' android/app/build.gradle
+          grep 'versionName "1.0.4"' android/app/build.gradle
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            source="android/app/src/main/res/mipmap-$density-v4"
+            target="android/app/src/main/res/mipmap-$density"
+            if [ -d "$source" ]; then mkdir -p "$target"; cp -f "$source"/*.png "$target"/; rm -rf "$source"; fi
+          done
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
+      - name: Firma e verifica APK AAB
+        working-directory: app-source
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.SIGNKEY }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.STOREPASS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.KEYPASS }}
+          UPLOAD_ALIAS: ${{ secrets.KEYALIAS }}
+        run: |
+          set -euo pipefail
+          test -n "$UPLOAD_KEYSTORE_B64"
+          test -n "$UPLOAD_STORE_PASSWORD"
+          test -n "$UPLOAD_KEY_PASSWORD"
+          test -n "$UPLOAD_ALIAS"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gatto-v18.jks"
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          "$TOOLS/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk unsigned-aligned.apk
+          "$TOOLS/apksigner" sign --ks "$RUNNER_TEMP/gatto-v18.jks" --ks-key-alias "$UPLOAD_ALIAS" --ks-pass env:UPLOAD_STORE_PASSWORD --key-pass env:UPLOAD_KEY_PASSWORD --out GattoGiudice_V18_CHECKIN_MOVIMENTO_ANDROID.apk unsigned-aligned.apk
+          "$TOOLS/apksigner" verify --verbose GattoGiudice_V18_CHECKIN_MOVIMENTO_ANDROID.apk
+          jarsigner -keystore "$RUNNER_TEMP/gatto-v18.jks" -storepass "$UPLOAD_STORE_PASSWORD" -keypass "$UPLOAD_KEY_PASSWORD" -sigalg SHA256withRSA -digestalg SHA-256 -signedjar GattoGiudice_V18_CHECKIN_MOVIMENTO_PLAY.aab android/app/build/outputs/bundle/release/app-release.aab "$UPLOAD_ALIAS"
+          jarsigner -verify GattoGiudice_V18_CHECKIN_MOVIMENTO_PLAY.aab
+          unzip -t GattoGiudice_V18_CHECKIN_MOVIMENTO_PLAY.aab | tail -1
+          rm -f "$RUNNER_TEMP/gatto-v18.jks" unsigned-aligned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GattoGiudice_V18_APK_AAB_Firmati
+          path: |
+            app-source/GattoGiudice_V18_CHECKIN_MOVIMENTO_ANDROID.apk
+            app-source/GattoGiudice_V18_CHECKIN_MOVIMENTO_PLAY.aab
+          if-no-files-found: error
