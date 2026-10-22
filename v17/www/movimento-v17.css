@@ -1,0 +1,45 @@
+/* V17: solo il gatto centrale si muove leggermente. Ritratti e cornici intatti. */
+.judge-card[data-position="center"] .judge-portrait,
+.judge-card[data-position="center"][data-judge="severo"] .judge-portrait,
+.judge-card[data-position="center"][data-judge="ironico"] .judge-portrait {animation:none}
+.judge-card .judge-portrait img{backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-origin:center 39%;transform:translate3d(0,0,0)}
+.judge-card[data-position="center"] .judge-portrait img{animation:cat-dolce-breath 9.3s ease-in-out infinite;will-change:transform}
+.judge-card[data-position="center"][data-judge="dolce"] .judge-portrait img{animation-name:cat-dolce-breath;animation-duration:9.3s}
+.judge-card[data-position="center"][data-judge="severo"] .judge-portrait img{animation-name:cat-severo-look;animation-duration:12.8s}
+.judge-card[data-position="center"][data-judge="ironico"] .judge-portrait img{animation-name:cat-ironico-tilt;animation-duration:9.1s}
+.judge-card[data-position="center"][data-judge="corrotto"] .judge-portrait img{animation-name:cat-corrotto-glance;animation-duration:11.3s}
+.judge-card[data-position="center"][data-judge="pigro"] .judge-portrait img{animation-name:cat-pigro-nod;animation-duration:14.2s}
+.judge-card[data-position="center"][data-judge="supremo"] .judge-portrait img{animation-name:cat-supremo-pose;animation-duration:13.1s}
+@keyframes cat-dolce-breath{
+0%,16%,95%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+42%,51%{transform:translate3d(0,-1px,0) rotate(.10deg) scale(1.009)}
+73%{transform:translate3d(0,0,0) rotate(-.10deg) scale(1.004)}
+}
+@keyframes cat-severo-look{
+0%,29%,70%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+39%,47%{transform:translate3d(-.7px,-.5px,0) rotate(-.15deg) scale(1.006)}
+55%{transform:translate3d(0,0,0) rotate(-.05deg) scale(1.003)}
+}
+@keyframes cat-ironico-tilt{
+0%,14%,83%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+26%,39%{transform:translate3d(.5px,-.5px,0) rotate(.33deg) scale(1.008)}
+57%{transform:translate3d(0,0,0) rotate(.13deg) scale(1.004)}
+}
+@keyframes cat-corrotto-glance{
+0%,18%,91%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+35%,46%{transform:translate3d(-1px,.5px,0) rotate(-.24deg) scale(1.009)}
+67%{transform:translate3d(-.4px,0,0) rotate(-.08deg) scale(1.004)}
+}
+@keyframes cat-pigro-nod{
+0%,25%,94%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+41%,62%{transform:translate3d(0,1.3px,0) rotate(.15deg) scale(1.004)}
+75%{transform:translate3d(0,.4px,0) rotate(.05deg) scale(1.002)}
+}
+@keyframes cat-supremo-pose{
+0%,31%,79%,100%{transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+43%,53%{transform:translate3d(0,-.9px,0) rotate(-.11deg) scale(1.006)}
+67%{transform:translate3d(0,-.3px,0) rotate(0deg) scale(1.002)}
+}
+.judge-card:not([data-position="center"]) .judge-portrait img{animation:none!important;will-change:auto}
+html[data-cat-motion="paused"] .judge-portrait img{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){.judge-card[data-position="center"] .judge-portrait img,.judge-card[data-position="center"] .judge-portrait{animation:none!important;transform:none!important;will-change:auto}}
