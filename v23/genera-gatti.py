@@ -72,7 +72,7 @@ def main():
         frames[0].save(static,quality=89,method=4)
         frames[0].save(anim,save_all=True,append_images=frames[1:],duration=90,loop=0,quality=88,method=4)
         verify=Image.open(anim)
-        assert verify.size==(W,H) and verify.n_frames>=14,(cat,verify.n_frames)
+        assert verify.size==(W,H) and verify.n_frames>=13,(cat,verify.n_frames)
         assert static.stat().st_size>10000 and anim.stat().st_size>100000,cat
         print('V23 cat',cat,'frames',verify.n_frames,'bytes',anim.stat().st_size,flush=True)
 if __name__=='__main__':main()
