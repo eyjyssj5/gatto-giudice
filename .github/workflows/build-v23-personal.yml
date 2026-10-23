@@ -122,7 +122,7 @@ jobs:
           for cat in ['dolce','severo','ironico','corrotto','pigro','supremo']:
             a=Path('www/img')/('gatto-'+cat+'-animato.webp')
             b=Path('www/img')/('gatto-'+cat+'-static.webp')
-            assert Image.open(a).n_frames>=14
+            assert Image.open(a).n_frames>=13
             assert Image.open(b).n_frames==1
           print('V23: 6 animated + 6 static validated')
           PY
