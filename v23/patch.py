@@ -4,7 +4,7 @@ import re
 P=Path('app-source/www')
 app=P/'app.js';s=app.read_text()
 start=s.index('function portraitMarkup(j,pos){')
-end=s.index('function panel(){',start)
+end=s.index('document.addEventListener("visibilitychange",()=>{if(document.hidden)stopJudgeMotion();});',start)+len('document.addEventListener("visibilitychange",()=>{if(document.hidden)stopJudgeMotion();});')
 replacement='''function portraitMarkup(j,pos){
  const prefix="img/gatto-"+j.id;
  const staticSrc=prefix+"-static.webp?v=23";
