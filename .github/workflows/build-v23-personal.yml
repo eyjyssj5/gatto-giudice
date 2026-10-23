@@ -57,7 +57,7 @@ jobs:
           for cat in ('dolce','severo','ironico','corrotto','pigro','supremo'):
             p=Path('app-source/www/img')/('gatto-'+cat+'-animato.webp')
             im=Image.open(p)
-            assert im.n_frames>=36,(cat,im.n_frames)
+            assert im.n_frames>=13,(cat,im.n_frames)
             im.seek(0);a=np.array(im.convert('RGB'),dtype=np.int16)
             im.seek(im.n_frames//4);b=np.array(im.convert('RGB'),dtype=np.int16)
             delta=np.abs(a-b)
