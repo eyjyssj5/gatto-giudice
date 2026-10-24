@@ -1,0 +1,57 @@
+name: Gatto Giudice - 5 veri video AI gratis (Severo Ironico Corrotto Pigro Supremo)
+on:
+  push:
+    branches: [gatto-movimento-vero-gratis]
+    paths:
+      - '.github/workflows/free-cats-five.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate-real-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        cat: [severo, ironico, corrotto, pigro, supremo]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Foto originali approvate
+        run: |
+          set -euo pipefail
+          mkdir -p app-source
+          unzip -q GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Pacchetti foto e richieste
+        run: |
+          python -m pip install --disable-pip-version-check requests pillow
+          if ! command -v ffprobe >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+      - name: Generazione realistica del gatto da foto approvata (senza pagamenti)
+        env:
+          CAT: ${{ matrix.cat }}
+        run: |
+          set -o pipefail
+          python -u free-motion/generate.py 2>&1 | tee "free-motion/risultato-${CAT}.log"
+      - name: Verifica un vero filmato MP4
+        if: always()
+        run: |
+          if [ -f "free-motion/result/${{ matrix.cat }}.mp4" ]; then
+            file "free-motion/result/${{ matrix.cat }}.mp4"
+            ffprobe -hide_banner -loglevel error -show_entries format=duration -of default=noprint_wrappers=1 "free-motion/result/${{ matrix.cat }}.mp4" || true
+          fi
+      - name: Esporta filmato pronto e diagnostica
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GattoGiudice_VideoReale_${{ matrix.cat }}
+          path: |
+            free-motion/result/${{ matrix.cat }}.mp4
+            free-motion/risultato-${{ matrix.cat }}.log
+          if-no-files-found: warn
