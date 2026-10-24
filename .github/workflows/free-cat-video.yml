@@ -1,0 +1,42 @@
+name: Gatto Giudice - Prova video AI veramente naturale (gratis)
+on:
+  push:
+    branches: [gatto-movimento-vero-gratis]
+    paths:
+      - 'free-motion/**'
+      - '.github/workflows/free-cat-video.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-natural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Foto originali
+        run: |
+          set -euo pipefail
+          mkdir app-source
+          unzip -q GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
+          test -s app-source/www/img/gatto-dolce-approvato.png
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dipendenze
+        run: python -m pip install --disable-pip-version-check requests pillow
+      - name: Genera un video vero da foto originale senza crediti e senza pagare
+        env:
+          CAT: dolce
+        run: |
+          set -o pipefail
+          python -u free-motion/generate.py 2>&1 | tee free-motion/prova-reale.log
+      - name: Salva vero MP4 se prodotto e diagnostica
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GATTO_DOLCE_VERO_VIDEO_GRATUITO_SE_GENERATO
+          path: |
+            free-motion/result/*.mp4
+            free-motion/prova-reale.log
+          if-no-files-found: warn
