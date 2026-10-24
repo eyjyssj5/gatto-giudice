@@ -33,7 +33,7 @@ jobs:
           cp "$dir/result/dolce.mp4" app-source/www/video/dolce.mp4
           for cat in dolce severo ironico corrotto pigro supremo; do
             test -s "app-source/www/video/$cat.mp4"
-            ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1 "app-source/www/video/$cat.mp4"
+            file "app-source/www/video/$cat.mp4"
           done
       - name: Origine applicazione approvata
         run: |
