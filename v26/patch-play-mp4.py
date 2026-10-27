@@ -92,12 +92,11 @@ for cat in cats:
     if p.exists():p.unlink()
 billing=P/"premium-entry.js"
 code=billing.read_text(encoding="utf-8")
-assert 'const id=j=>"giudice_"+j+"_premium";' in code
-code=code.replace('const id=j=>"giudice_"+j+"_premium";','const id=j=>j==="supremo"?"giudice_supremo_abbonamento":"giudice_"+j+"_premium";',1)
-old='store.register(ids.map(j=>({id:id(j),type:ProductType.NON_CONSUMABLE,platform:Platform.GOOGLE_PLAY})));'
-assert old in code
-code=code.replace(old,'store.register(ids.map(j=>({id:id(j),type:j==="supremo"?ProductType.PAID_SUBSCRIPTION:ProductType.NON_CONSUMABLE,platform:Platform.GOOGLE_PLAY})));',1)
-billing.write_text(code,encoding="utf-8")
+# The V18 premium adapter already contains 4 one-time purchases and Supreme subscription.
+assert "giudice_supremo_abbonamento" in code
+assert "ProductType.PAID_SUBSCRIPTION" in code
+assert "ProductType.NON_CONSUMABLE" in code
+assert "j==='supremo'?ProductType.PAID_SUBSCRIPTION:ProductType.NON_CONSUMABLE" in code
 config=Path("app-source/capacitor.config.json")
 assert '"com.aivevia.gattogiudice"' in config.read_text()
 assert 'com.aivevia.gattogiudice.personale' not in config.read_text()
