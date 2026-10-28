@@ -1,3 +1,4 @@
+import {billingConfigured,validatePlayReceipt} from "./play-billing.mjs";
 // Endpoint AI del Gatto Giudice, per Cloudflare Workers con Workers AI.
 const PRIVACY_HTML = "<!doctype html>\n<html lang=\"it\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Informativa privacy | Il Gatto Giudice</title><meta name=\"robots\" content=\"index,follow\"><style>body{margin:auto;max-width:790px;padding:24px;font:16px/1.65 system-ui,sans-serif;background:#fafaf6;color:#1e2d2c}h1,h2{color:#153e37}h2{margin-top:1.8em}a{color:#12644d}small{color:#53635d}</style></head><body>\n<h1>Il Gatto Giudice - Informativa sulla privacy</h1>\n<p><small>Aggiornata il 28 ottobre 2026.</small></p>\n<p>Questa informativa riguarda l'app mobile <strong>Il Gatto Giudice</strong> (com.aivevia.gattogiudice), sviluppata da AIVEVIA. Contatto privacy: <a href=\"mailto:eyjyssj@gmail.com\">eyjyssj@gmail.com</a>.</p>\n<h2>Dati trattati e finalità</h2>\n<p>Quando chiedi un verdetto, l'app invia il testo della decisione, il giudice scelto, la lingua e un identificativo pseudonimo generato dall'app a un servizio Cloudflare Workers AI. Questi dati servono a produrre la risposta e a limitare gli abusi. Evita di inviare informazioni riservate o dati personali di terzi.</p>\n<p>Il dispositivo conserva localmente la selezione del giudice, il testo e l'esito delle decisioni recenti, lo stato dei check-in e un identificativo tecnico. Il codice dell'app conserva localmente fino a 250 decisioni recenti. Questi dati rimangono sul dispositivo finché non vengono rimossi tramite la cancellazione dei dati dell'app o altre operazioni del sistema.</p>\n<p>Se usi la dettatura, l'app richiede l'accesso al microfono e utilizza il servizio di riconoscimento vocale disponibile sul dispositivo. Il trattamento dell'audio da parte del fornitore del riconoscimento vocale dipende dal servizio e dalle impostazioni del telefono.</p>\n<p>Se effettui acquisti o abbonamenti, la transazione è gestita dal sistema di fatturazione di Google Play. L'app riceve informazioni sullo stato del prodotto acquistato; i dati completi della carta di pagamento non sono trattati direttamente dall'app.</p>\n<h2>Fornitori e comunicazioni</h2>\n<p>Per i verdetti utilizziamo Cloudflare Workers e Workers AI; per installazione e acquisti Google Play; per la dettatura il servizio del dispositivo. Questi fornitori possono trattare dati tecnici necessari all'erogazione del servizio, secondo i propri termini e informative.</p>\n<h2>Conservazione e sicurezza</h2>\n<p>Il codice del Worker non salva le decisioni in un archivio applicativo persistente. I fornitori di infrastruttura possono conservare registri tecnici per sicurezza, funzionamento e obblighi di legge. Utilizziamo connessioni HTTPS per comunicare con il servizio AI.</p>\n<h2>Scelte e diritti</h2>\n<p>Puoi non utilizzare il microfono e inserire soltanto testo. Per cancellare lo storico e i check-in memorizzati sul telefono, puoi cancellare i dati dell'app dalle impostazioni Android. Per richieste su privacy, accesso, rettifica o cancellazione di dati eventualmente trattati, scrivi a <a href=\"mailto:eyjyssj@gmail.com\">eyjyssj@gmail.com</a>.</p>\n<h2>English summary</h2>\n<p>Judge Cat sends the text you submit, selected judge, language and an app-generated pseudonymous identifier to Cloudflare Workers AI to generate a verdict and limit abuse. Recent decisions and check-ins are stored on your device. Voice dictation uses the device's speech recognition service. Purchases are handled through Google Play. You can erase locally stored information using Android's clear app data function. Contact: <a href=\"mailto:eyjyssj@gmail.com\">eyjyssj@gmail.com</a>.</p>\n</body></html>";
 const ORIGIN = "https://eyjyssj5.github.io";
@@ -84,12 +85,28 @@ export default {
     const { pathname } = new URL(request.url);
     const origin = request.headers.get("Origin");
 
+    if (pathname === "/billing-status" && request.method === "GET") {
+      return json({ready:billingConfigured(env),provider:"google-play"},200,origin);
+    }
+    if (pathname === "/verify-play" && request.method === "POST") {
+      if (!ORIGINS.has(origin)) return json({ok:false,error:{message:"Origin not allowed"}},403,origin);
+      if (!request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json"))
+        return json({ok:false,error:{message:"Content type must be JSON"}},415,origin);
+      let receipt;
+      try {
+        if (Number(request.headers.get("Content-Length")||0)>65536)throw Error("too large");
+        receipt=await request.json();
+      }catch{return json({ok:false,error:{message:"Invalid receipt"}},400,origin);}
+      const validation=await validatePlayReceipt(receipt,env);
+      return json(validation,validation.ok?200:validation.error?.code===503?503:400,origin);
+    }
+
     if (pathname === "/privacy" && request.method === "GET") {
       return new Response(PRIVACY_HTML, {status:200,headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"public, max-age=3600","X-Content-Type-Options":"nosniff"}});
     }
 
     if (request.method === "OPTIONS") {
-      if (!ORIGINS.has(origin) || pathname !== "/giudica") return json({ errore: "Origine non autorizzata." }, 403, origin);
+      if (!ORIGINS.has(origin) || !["/giudica","/verify-play"].includes(pathname)) return json({ errore: "Origine non autorizzata." }, 403, origin);
       return new Response(null, {
         status: 204,
         headers: {
