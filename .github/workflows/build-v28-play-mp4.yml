@@ -3,7 +3,7 @@ on:
   push:
     branches: [gatto-play-v28-consegna-sotto-gatto]
     paths:
-      - '.github/workflows/build-v27-play-mp4.yml'
+      - '.github/workflows/build-v28-play-mp4.yml'
       - 'v26/**'
       - 'v27/**'
       - 'v28/**'
