@@ -1,0 +1,21 @@
+name: Verifica Gatto Giudice - Sei giudici e AI
+on:
+  push:
+    branches: [gatto-play-v28-consegna-sotto-gatto]
+    paths:
+      - '.github/workflows/verifica-sei-giudici.yml'
+      - 'worker/**'
+      - 'tests/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: node --check worker/index.mjs
