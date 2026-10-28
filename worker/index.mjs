@@ -130,8 +130,14 @@ export default {
 
     // Otto richieste al minuto per dispositivo. Il limite di 10 sentenze al giorno
     // e' nell'app: qui non costituisce un controllo anti-abuso forte.
-    const { success } = await env.LIMITER.limit({ key: dispositivo });
-    if (!success) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
+    // Limita sia l'ID locale (modificabile) sia l'IP fornito da Cloudflare,
+    // cosi' cambiare l'identificativo non azzera automaticamente la protezione.
+    const { success: deviceOk } = await env.LIMITER.limit({ key: "device:" + dispositivo });
+    const cloudflareIp = request.headers.get("CF-Connecting-IP");
+    const { success: ipOk } = cloudflareIp
+      ? await env.LIMITER.limit({ key: "ip:" + cloudflareIp })
+      : { success: true };
+    if (!deviceOk || !ipOk) return json({ errore: "Il gatto fa una pausa. Riprova tra un minuto." }, 429);
 
     const istruzioni = [
       "Sei IL GATTO GIUDICE, un gatto magistrato in un'app di intrattenimento.",
