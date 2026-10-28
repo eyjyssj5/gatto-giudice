@@ -1,0 +1,38 @@
+name: V30 - Distribuisci APK e AAB test pagamento
+on:
+  push:
+    branches: [gatto-play-v30-verifica-pagamenti-google]
+    paths:
+      - '.github/workflows/distribuisci-v30-file.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recupera APK e AAB firmati dal run V30
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download 40732236779 --repo "${{ github.repository }}" -n GattoGiudice_V30_GOOGLE_PLAY_AAB_FIRMATO_E_APK -D dist
+          test -s dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI.aab
+          test -s dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk
+          cd dist
+          zip -q GattoGiudice_V30_TUTTI_I_FILE.zip GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI.aab GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk verifica-firma.txt
+      - name: Rendi i file scaricabili come prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=gatto-giudice-v30-1.2.4
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI.aab dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk dist/GattoGiudice_V30_TUTTI_I_FILE.zip --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI.aab dist/GattoGiudice_V30_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk dist/GattoGiudice_V30_TUTTI_I_FILE.zip --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Gatto Giudice V30 - verifica pagamenti (SOLO TEST)" --notes "Build V30 1.2.4 (versionCode 30). La verifica server degli acquisti è predisposta, ma i pagamenti rimangono disabilitati FINO A configurazione account servizio Google Play e test di transazioni reali. NON PROMUOVERE IN PRODUZIONE." --prerelease
+          fi
+          gh release view "$tag" --repo "${{ github.repository }}" --json url,assets
