@@ -3,13 +3,13 @@ const PACKAGE="com.aivevia.gattogiudice";
 const ONE_TIME=new Set(["giudice_severo_premium","giudice_ironico_premium","giudice_corrotto_premium","giudice_pigro_premium"]);
 const SUBSCRIPTION="giudice_supremo_abbonamento";
 const decodeBase64=s=>Uint8Array.from(atob(s),x=>x.charCodeAt(0));
-const b64url=x=>btoa(String.fromCharCode(...new Uint8Array(x))).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,"");
+const b64url=x=>btoa(String.fromCharCode(...new Uint8Array(x))).split("+").join("-").split("/").join("_").replace(/=+$/,"");
 async function oauthAccessToken(env,fetcher=fetch){
  const raw=env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON;
  if(!raw)throw Error("Google Play service account not configured");
  const cred=JSON.parse(raw);
  if(!cred.client_email||!cred.private_key)throw Error("Incomplete Google Play service account");
- const privateKey=decodeBase64(cred.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\\s/g,""));
+ const privateKey=decodeBase64(cred.private_key.split("-----BEGIN PRIVATE KEY-----").join("").split("-----END PRIVATE KEY-----").join("").replaceAll(String.fromCharCode(10),"").replaceAll(String.fromCharCode(13),"").replaceAll(" ",""));
  const key=await crypto.subtle.importKey("pkcs8",privateKey,{name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["sign"]);
  const now=Math.floor(Date.now()/1000);
  const header=b64url(new TextEncoder().encode(JSON.stringify({alg:"RS256",typ:"JWT"})));
