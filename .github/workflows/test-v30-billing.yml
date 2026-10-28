@@ -1,0 +1,23 @@
+name: V30 - Test acquisti Google Play e servizi AI
+on:
+  push:
+    branches: [gatto-play-v30-verifica-pagamenti-google]
+    paths:
+      - '.github/workflows/test-v30-billing.yml'
+      - 'worker/**'
+      - 'tests/**'
+      - 'v30/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: node --check worker/index.mjs
+      - run: node --check worker/play-billing.mjs
