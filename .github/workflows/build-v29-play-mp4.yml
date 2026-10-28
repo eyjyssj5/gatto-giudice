@@ -1,0 +1,152 @@
+name: Gatto Giudice V29 - Google Play AAB - Privacy e sei giudici
+on:
+  push:
+    branches: [gatto-play-v29-pronto-policy-e-pagamenti]
+    paths:
+      - '.github/workflows/build-v29-play-mp4.yml'
+      - 'v26/**'
+      - 'v27/**'
+      - 'v28/**'
+      - 'v29/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recupera i sei video originali generati gratuitamente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p app-source/www/video
+          for cat in severo ironico corrotto pigro supremo; do
+            dir="$RUNNER_TEMP/video-$cat"
+            mkdir -p "$dir"
+            gh run download 40120665896 --repo "${{ github.repository }}" -n "GattoGiudice_VideoReale_$cat" -D "$dir"
+            test -s "$dir/result/$cat.mp4"
+            cp "$dir/result/$cat.mp4" "app-source/www/video/$cat.mp4"
+          done
+          dir="$RUNNER_TEMP/video-dolce"
+          mkdir -p "$dir"
+          gh run download 40120400900 --repo "${{ github.repository }}" -n GATTO_DOLCE_VERO_VIDEO_GRATUITO_SE_GENERATO -D "$dir"
+          cp "$dir/result/dolce.mp4" app-source/www/video/dolce.mp4
+          for cat in dolce severo ironico corrotto pigro supremo; do
+            test -s "app-source/www/video/$cat.mp4"
+            file "app-source/www/video/$cat.mp4"
+          done
+      - name: Origine applicazione approvata
+        run: |
+          set -euo pipefail
+          unzip -qo GattoGiudice_PLAY_V16_SORGENTI_BUILD_AAB.zip -d app-source
+          test -s app-source/www/video/severo.mp4
+          test -s app-source/www/img/gatto-dolce-approvato.png
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android API 36
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Test, sostituzione effetti finti con veri video, compilazione
+        run: |
+          set -euo pipefail
+          cd app-source
+          npm install --no-audit --no-fund
+          npm test
+          cd ..
+          python3 v18/patch-v18.py
+          python3 -m pip install -q "numpy<3" pillow opencv-python-headless
+          python3 v21/build-motion.py --source app-source/www/img --output app-source/www/img
+          python3 v20/patch.py
+          python3 v22/patch-v22.py --edition play
+          python3 v26/patch-play-mp4.py
+          python3 v27/fix-commercial-preview.py
+          python3 v28/patch-cta-near-cat.py
+          python3 v29/patch-privacy.py
+          cd app-source
+          node --check www/app.js
+          grep -Fq 'GattoCheckin?.owned(id)' www/app.js
+          ! grep -Fq 'function paid(id){return true;}' www/app.js
+          grep -Fq 'ProductType.PAID_SUBSCRIPTION' www/premium-entry.js
+          grep -Fq 'giudice_supremo_abbonamento' www/premium-entry.js
+          grep -q 'com.aivevia.gattogiudice' capacitor.config.json
+          ! grep -q 'com.aivevia.gattogiudice.personale' capacitor.config.json
+          grep -Fq 'playJudgeMotion(selected)' www/app.js
+          grep -Fq 'v28-consegna-slot' www/index.html
+          grep -Fq 'id="privacy-link"' www/index.html
+          grep -Fq 'v28-consegna-button' www/consegna-v28.js
+          grep -Fq 'original.click();' www/consegna-v28.js
+          grep -Fq 'video.cat-reaction' www/app.js
+          grep -Fq 'if(!paid(selected))' www/app.js
+          grep -Fq 'el("btn-giudica").disabled=busy;' www/app.js
+          ! grep -Fq 'if(busy||!paid(state.carattere))' www/app.js
+          for cat in dolce severo ironico corrotto pigro supremo; do
+            test -s "www/video/$cat.mp4"
+            test ! -e "www/img/gatto-$cat-animato.webp"
+          done
+          npm run build:premium
+          npx cap add android
+          npx cap sync android
+          bash scripts/prepare-android-play.sh
+          sed -i -E 's/minSdkVersion[[:space:]]*=[[:space:]]*22/minSdkVersion = 24/' android/variables.gradle
+          sed -i -E 's/versionCode[[:space:]]+[0-9]+/versionCode 29/' android/app/build.gradle
+          sed -i -E 's/versionName[[:space:]]+"[^"]+"/versionName "1.2.3"/' android/app/build.gradle
+          grep -q 'com.aivevia.gattogiudice' android/app/build.gradle
+          ! grep -q 'com.aivevia.gattogiudice.personale' android/app/build.gradle
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            source="android/app/src/main/res/mipmap-$density-v4"
+            target="android/app/src/main/res/mipmap-$density"
+            if [ -d "$source" ]; then mkdir -p "$target"; cp -f "$source"/*.png "$target"/; rm -rf "$source"; fi
+          done
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon
+      - name: Firma apk v2/v3 con chiave originale e verifica video
+        working-directory: app-source
+        env:
+          UPLOAD_KEYSTORE_B64: ${{ secrets.SIGNKEY }}
+          UPLOAD_STORE_PASSWORD: ${{ secrets.STOREPASS }}
+          UPLOAD_KEY_PASSWORD: ${{ secrets.KEYPASS }}
+          UPLOAD_ALIAS: ${{ secrets.KEYALIAS }}
+        run: |
+          set -euo pipefail
+          test -n "$UPLOAD_KEYSTORE_B64"
+          printf '%s' "$UPLOAD_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/gatto-original.jks"
+          TOOLS="$ANDROID_HOME/build-tools/36.0.0"
+          "$TOOLS/zipalign" -f -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk unsigned-aligned.apk
+          "$TOOLS/apksigner" sign --ks "$RUNNER_TEMP/gatto-original.jks" --ks-key-alias "$UPLOAD_ALIAS" --ks-pass env:UPLOAD_STORE_PASSWORD --key-pass env:UPLOAD_KEY_PASSWORD --out GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk unsigned-aligned.apk
+          "$TOOLS/apksigner" verify --verbose --print-certs GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk | tee verifica-firma.txt
+          grep -q 'Verified using v2 scheme.*true' verifica-firma.txt
+          grep -q 'Verified using v3 scheme.*true' verifica-firma.txt
+          grep -q 'c4eceedd79b95129358d0032619fd5f3a0304f48da6b37671d3b3b6a9fd36d57' verifica-firma.txt
+          unzip -t GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk | tail -1
+          unzip -l GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk | tee verifica-contenuti.txt
+          for cat in dolce severo ironico corrotto pigro supremo; do
+            grep -Fq "assets/public/video/$cat.mp4" verifica-contenuti.txt
+          done
+          jarsigner -keystore "$RUNNER_TEMP/gatto-original.jks" -storepass "$UPLOAD_STORE_PASSWORD" -keypass "$UPLOAD_KEY_PASSWORD" -sigalg SHA256withRSA -digestalg SHA-256 -signedjar GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab android/app/build/outputs/bundle/release/app-release.aab "$UPLOAD_ALIAS"
+          jarsigner -verify GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab
+          unzip -t GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab | tail -1
+          unzip -l GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab | tee verifica-contenuti-aab.txt
+          for cat in dolce severo ironico corrotto pigro supremo; do
+            grep -Fq "base/assets/public/video/$cat.mp4" verifica-contenuti-aab.txt
+          done
+      - name: Esporta AAB per Google Play e APK di test
+        uses: actions/upload-artifact@v4
+        with:
+          name: GattoGiudice_V29_GOOGLE_PLAY_AAB_FIRMATO_E_APK
+          path: |
+            app-source/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk
+            app-source/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab
+            app-source/verifica-firma.txt
+          if-no-files-found: error
