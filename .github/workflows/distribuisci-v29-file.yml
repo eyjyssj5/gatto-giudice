@@ -1,0 +1,39 @@
+name: Gatto Giudice V29 - Pubblica file scaricabili
+on:
+  push:
+    branches: [gatto-play-v29-pronto-policy-e-pagamenti]
+    paths:
+      - '.github/workflows/distribuisci-v29-file.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  distribute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Recupera APK e AAB dalla compilazione riuscita V29
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download 40729530779 --repo "${{ github.repository }}" -n GattoGiudice_V29_GOOGLE_PLAY_AAB_FIRMATO_E_APK -D dist
+          test -s dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab
+          test -s dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk
+          test -s dist/verifica-firma.txt
+          cd dist
+          zip -q GattoGiudice_V29_TUTTI_I_FILE.zip GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk verifica-firma.txt
+      - name: Pubblica download permanenti GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=gatto-giudice-v29-1.2.3
+          if gh release view "$tag" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk dist/GattoGiudice_V29_TUTTI_I_FILE.zip --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$tag" dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI.aab dist/GattoGiudice_V29_GOOGLE_PLAY_GATTI_ANIMATI_ANDROID.apk dist/GattoGiudice_V29_TUTTI_I_FILE.zip --repo "${{ github.repository }}" --target "${{ github.sha }}" --title "Gatto Giudice V29 - file APK e AAB" --notes "Build firmata 1.2.3 (versionCode 29), APK per Android e AAB per test Google Play. Release preliminare: verifica i pagamenti prima della produzione." --prerelease
+          fi
+          gh release view "$tag" --repo "${{ github.repository }}" --json url,assets
