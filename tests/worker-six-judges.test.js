@@ -12,7 +12,7 @@ test("Il Worker AI accetta tutti e sei i giudici con personalita' distinte",asyn
     AI:{run:async(_model,opts)=>{
       calls++;
       const prompt=opts.messages[0].content;
-      assert.match(prompt,/Personalita:/);
+      assert.match(prompt,/Personalita'/);
       if(expected[carattere])assert.match(prompt,expected[carattere]);
       return {response:JSON.stringify({verdetto:"APPROVO",frase:"Questa scelta merita un'approvazione felina."})};
     }}
