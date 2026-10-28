@@ -50,7 +50,7 @@ test("Verifica completa mock Google: firma OAuth, token e prodotto non consumabi
      assert.ok(token.length>100);
      return {ok:true,json:async()=>({access_token:"test-oauth-token"})};
    }
-   assert.match(url,/purchases\\/products\\/giudice_severo_premium\\/tokens\\/token-verified-1234567890/);
+   assert.equal(String(url).includes("/purchases/products/giudice_severo_premium/tokens/token-verified-1234567890"),true);
    assert.equal(options.headers.Authorization,"Bearer test-oauth-token");
    return {ok:true,json:async()=>({purchaseState:0,orderId:"GPA.TEST",acknowledgementState:0})};
  };
