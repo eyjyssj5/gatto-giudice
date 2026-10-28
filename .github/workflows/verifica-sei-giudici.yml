@@ -1,7 +1,7 @@
 name: Verifica Gatto Giudice - Sei giudici e AI
 on:
   push:
-    branches: [gatto-play-v28-consegna-sotto-gatto]
+    branches: [gatto-play-v28-consegna-sotto-gatto, gatto-play-v29-pronto-policy-e-pagamenti]
     paths:
       - '.github/workflows/verifica-sei-giudici.yml'
       - 'worker/**'
