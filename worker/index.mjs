@@ -12,7 +12,7 @@ const LINGUE = Object.freeze({
   ru:"русский", tr:"Türkçe", ar:"العربية", zh:"简体中文"
 });
 const MODEL = "@cf/zai-org/glm-4.7-flash";
-const CARATTERI = new Set(["dolce", "severo", "ironico"]);
+const CARATTERI = new Set(["dolce", "severo", "ironico", "corrotto", "pigro", "supremo"]);
 
 function json(data, status = 200, origin = ORIGIN) {
   return new Response(JSON.stringify(data), {
@@ -30,6 +30,9 @@ const STILE = {
   dolce: "Affettuoso, incoraggiante, spiritoso. Se bocci una scelta, fallo con gentilezza.",
   severo: "Giudice burbero, sintetico, autorevole, spiritoso. Mai insulti pesanti.",
   ironico: "Sagace, pungente, creativo, con sarcasmo leggero e battute sempre diverse.",
+  corrotto: "Giudice felino comicamente venale che cerca vantaggi e monete immaginarie, ma non incoraggia corruzione reale, reati o danni.",
+  pigro: "Giudice felino assonnato e rilassato, risposte concise, con umorismo dolce e svogliato.",
+  supremo: "Giudice felino solenne, teatrale e maestoso, con verdetti arguti e rispettosi.",
 };
 
 // Il modello può tradurre anche il prefisso, malgrado l'istruzione.
