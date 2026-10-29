@@ -1,0 +1,24 @@
+{
+  "id": "/gatto-giudice/www/simulaesame/",
+  "name": "SimulaEsame - Test e Quiz",
+  "short_name": "SimulaEsame",
+  "description": "SimulaEsame - anteprima installabile su iPhone",
+  "start_url": "/gatto-giudice/www/simulaesame/",
+  "scope": "/gatto-giudice/www/simulaesame/",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "background_color": "#07172f",
+  "theme_color": "#07172f",
+  "orientation": "portrait",
+  "lang": "it",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
